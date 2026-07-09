@@ -8,14 +8,15 @@
 <link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%2048%2048'%3E%3Cdefs%3E%3ClinearGradient%20id='s'%20x1='0'%20y1='0'%20x2='1'%20y2='1'%3E%3Cstop%20offset='0'%20stop-color='%238ecabf'/%3E%3Cstop%20offset='1'%20stop-color='%23356a63'/%3E%3C/linearGradient%3E%3C/defs%3E%3Ccircle%20cx='24'%20cy='24'%20r='23'%20fill='%23e4f3f0'/%3E%3CclipPath%20id='c'%3E%3Ccircle%20cx='24'%20cy='24'%20r='23'/%3E%3C/clipPath%3E%3Cg%20clip-path='url(%23c)'%3E%3Ccircle%20cx='31'%20cy='16'%20r='6'%20fill='%23f77e5c'/%3E%3Cpath%20d='M-4%2030C7%2023%2015%2023%2024%2028C33%2033%2041%2026%2052%2030L52%2052-4%2052Z'%20fill='url(%23s)'/%3E%3C/g%3E%3C/svg%3E" />
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=Nunito+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Quicksand:wght@400;500;600;700&family=Nunito+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <script src="https://cdn.tailwindcss.com"></script>
 <script>
   tailwind.config = {
     theme: {
       extend: {
         fontFamily: {
-          serif: ['Cormorant Garamond', 'serif'],
+          serif: ['Quicksand', 'sans-serif'],
+          display: ['Quicksand', 'sans-serif'],
           sans: ['Nunito Sans', 'sans-serif'],
         },
         colors: {
@@ -55,7 +56,7 @@
 <style>
   html { scroll-behavior: smooth; }
   body { font-family: 'Nunito Sans', sans-serif; }
-  .font-serif { font-family: 'Cormorant Garamond', serif; }
+  .font-serif { font-family: 'Quicksand', sans-serif; letter-spacing: -0.01em; }
   ::-webkit-scrollbar { width: 10px; height: 10px; }
   ::-webkit-scrollbar-track { background: #f4faf9; }
   ::-webkit-scrollbar-thumb { background: #a3d5cc; border-radius: 9999px; }
@@ -171,14 +172,19 @@
   /* Emblema de marca */
   .logo-emblem { transition: transform .45s cubic-bezier(.34,1.56,.64,1); transform-origin: center; flex-shrink: 0; }
   .logo-link:hover .logo-emblem { transform: rotate(-8deg) scale(1.08); }
-  .logo-emblem .lm-sun { transition: transform .5s cubic-bezier(.34,1.56,.64,1); transform-origin: 31px 16px; }
+  .logo-emblem .lm-sun { transition: transform .5s cubic-bezier(.34,1.56,.64,1); transform-origin: 31px 15px; }
   .logo-link:hover .lm-sun { transform: translateY(-2.5px) scale(1.1); }
+  .logo-emblem .lm-glow { transform-origin: 31px 15px; animation: sunGlow 4.5s ease-in-out infinite; }
+  @keyframes sunGlow { 0%,100% { opacity: .7; transform: scale(1); } 50% { opacity: 1; transform: scale(1.14); } }
+  .logo-emblem .lm-shimmer { animation: shimmer 3.6s ease-in-out infinite; }
+  @keyframes shimmer { 0%,100% { opacity: .9; } 50% { opacity: .5; } }
   .logo-emblem .lm-wave1 { transition: transform .6s ease; }
   .logo-emblem .lm-wave2 { transition: transform .7s ease; }
   .logo-link:hover .lm-wave1 { transform: translateX(-3px); }
   .logo-link:hover .lm-wave2 { transform: translateX(3px); }
   @media (prefers-reduced-motion: reduce) {
     .logo-emblem, .lm-sun, .lm-wave1, .lm-wave2 { transition: none !important; }
+    .lm-glow, .lm-shimmer { animation: none !important; }
   }
 
   /* Respeto por quienes prefieren menos movimiento */
@@ -620,35 +626,65 @@ function Reveal({ children, className }) {
   );
 }
 
-// Emblema de marca: sol coral sobre un mar en capas (paleta de la marca)
+// Emblema de marca: amanecer sobre el mar — sol con resplandor, reflejo y capas de olas
 function LogoMark({ size }) {
   const s = size || 42;
   const uid = React.useMemo(() => 'lm' + Math.random().toString(36).slice(2, 7), []);
+  const g = id => "url(#" + uid + id + ")";
   return (
     <svg className="logo-emblem" width={s} height={s} viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
       <defs>
         <linearGradient id={uid + 'sky'} x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0" stopColor="#f0faf7" />
-          <stop offset="1" stopColor="#d7efe9" />
+          <stop offset="0" stopColor="#eaf4fb" />
+          <stop offset="0.55" stopColor="#f4f1ec" />
+          <stop offset="1" stopColor="#ffe4d4" />
         </linearGradient>
-        <linearGradient id={uid + 'sea'} x1="0" y1="0" x2="1" y2="1">
-          <stop offset="0" stopColor="#8ecabf" />
-          <stop offset="1" stopColor="#356a63" />
+        <linearGradient id={uid + 'sea'} x1="0" y1="0" x2="0.9" y2="1">
+          <stop offset="0" stopColor="#a2d7cd" />
+          <stop offset="0.5" stopColor="#5aa89b" />
+          <stop offset="1" stopColor="#2c635b" />
         </linearGradient>
-        <linearGradient id={uid + 'sun'} x1="0" y1="0" x2="1" y2="1">
-          <stop offset="0" stopColor="#ffd3c2" />
-          <stop offset="1" stopColor="#f77e5c" />
+        <linearGradient id={uid + 'seaBack'} x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stopColor="#7cc0b4" />
+          <stop offset="1" stopColor="#3f7d73" />
         </linearGradient>
+        <radialGradient id={uid + 'sun'} cx="0.42" cy="0.38" r="0.7">
+          <stop offset="0" stopColor="#fff3d8" />
+          <stop offset="0.55" stopColor="#ffb98f" />
+          <stop offset="1" stopColor="#f5764c" />
+        </radialGradient>
+        <radialGradient id={uid + 'glow'} cx="0.5" cy="0.5" r="0.5">
+          <stop offset="0" stopColor="#ffcbb2" stopOpacity="0.8" />
+          <stop offset="1" stopColor="#ffcbb2" stopOpacity="0" />
+        </radialGradient>
         <clipPath id={uid + 'clip'}><circle cx="24" cy="24" r="22" /></clipPath>
       </defs>
-      <g clipPath={"url(#" + uid + "clip)"}>
-        <rect width="48" height="48" fill={"url(#" + uid + "sky)"} />
-        <circle className="lm-sun" cx="31" cy="16" r="5.5" fill={"url(#" + uid + "sun)"} />
-        <path className="lm-wave1" d="M-4 31 C 7 24, 15 24, 24 29 C 33 34, 41 27, 52 31 L52 52 L-4 52 Z" fill={"url(#" + uid + "sea)"} />
-        <path className="lm-wave2" d="M-4 36 C 7 30, 15 30, 24 35 C 33 40, 41 33, 52 37 L52 52 L-4 52 Z" fill="#ffffff" opacity="0.35" />
+      <g clipPath={g('clip')}>
+        <rect width="48" height="48" fill={g('sky')} />
+        {/* nube tenue */}
+        <ellipse cx="13" cy="12" rx="7" ry="2.1" fill="#ffffff" opacity="0.55" />
+        <ellipse cx="17" cy="10.5" rx="4.5" ry="1.7" fill="#ffffff" opacity="0.4" />
+        {/* resplandor + sol */}
+        <circle className="lm-glow" cx="31" cy="15" r="11" fill={g('glow')} />
+        <circle className="lm-sun" cx="31" cy="15" r="5" fill={g('sun')} />
+        {/* mar: capa de fondo y capa frontal */}
+        <path className="lm-wave1" d="M-4 30 C 6 25, 14 25, 24 29 C 34 33, 42 26, 52 30 L52 52 L-4 52 Z" fill={g('seaBack')} />
+        <path className="lm-wave2" d="M-4 34 C 6 29, 14 29, 24 33 C 34 37, 42 30, 52 34 L52 52 L-4 52 Z" fill={g('sea')} />
+        {/* reflejo del sol sobre el agua */}
+        <g className="lm-shimmer" fill="#ffffff">
+          <rect x="27.5" y="31" width="7" height="1.3" rx="0.6" opacity="0.7" />
+          <rect x="26" y="34" width="10" height="1.4" rx="0.7" opacity="0.6" />
+          <rect x="28" y="37" width="6" height="1.3" rx="0.6" opacity="0.5" />
+          <rect x="27" y="40" width="8" height="1.3" rx="0.6" opacity="0.4" />
+          <rect x="29" y="43" width="4" height="1.2" rx="0.6" opacity="0.3" />
+        </g>
+        {/* brillo de espuma */}
+        <path d="M-4 33.6 C 6 28.6, 14 28.6, 24 32.6 C 34 36.6, 42 29.6, 52 33.6" fill="none" stroke="#ffffff" strokeWidth="0.9" opacity="0.5" strokeLinecap="round" />
       </g>
+      {/* aros */}
       <circle cx="24" cy="24" r="22" fill="none" stroke="#ffffff" strokeWidth="2.5" />
-      <circle cx="24" cy="24" r="23.2" fill="none" stroke="#c8e7e1" strokeWidth="1" />
+      <circle cx="24" cy="24" r="23.3" fill="none" stroke="#c8e7e1" strokeWidth="1" />
+      <path d="M8.5 12 A 22 22 0 0 1 39.5 12" fill="none" stroke="#ffffff" strokeWidth="1.4" strokeLinecap="round" opacity="0.5" />
     </svg>
   );
 }
@@ -658,9 +694,14 @@ function Logo({ size, tagline, wordClass }) {
     <span className="flex items-center gap-2.5">
       <LogoMark size={size} />
       <span className="flex flex-col leading-none">
-        <span className={"font-serif font-semibold tracking-tight " + (wordClass || "text-xl text-sea-900")}>Estado del Mar</span>
+        <span className={"font-serif font-bold tracking-normal " + (wordClass || "text-xl text-sea-900")}>
+          Estado del <span className="text-mist-600">Mar</span>
+        </span>
         {tagline !== false && (
-          <span className="hidden sm:block text-[9px] uppercase tracking-[0.22em] text-mist-500 font-sans font-bold mt-1">Ventanas interiores</span>
+          <span className="hidden sm:flex items-center gap-1.5 mt-1.5">
+            <span className="h-px w-3 bg-coral-400"></span>
+            <span className="text-[9px] uppercase tracking-[0.24em] text-mist-500 font-sans font-bold">Ventanas interiores</span>
+          </span>
         )}
       </span>
     </span>
