@@ -255,6 +255,10 @@ const SUPABASE_URL = 'https://rtpwhzahrvubelzvfvoh.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJ0cHdoemFocnZ1YmVsenZmdm9oIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODM1MzQ1ODQsImV4cCI6MjA5OTExMDU4NH0.7rEH2dkekYqn6eBcFXGwkGHhiuGH6PtsecPxdDW8P7g';
 const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
+// Login con Google. Poné en true DESPUÉS de habilitar el proveedor Google
+// en Supabase (ver la guía). Mientras esté en false, el botón no se muestra.
+const GOOGLE_LOGIN_ENABLED = false;
+
 /* ===== estado-del-mar.01-data.js ===== */
 
 const LIKERT = [
@@ -1182,6 +1186,15 @@ function AuthModal({ intent, initialMode, onClose, onAuthed }) {
   const [error, setError] = React.useState('');
   const [needsConfirm, setNeedsConfirm] = React.useState(false);
 
+  async function handleGoogle() {
+    setError('');
+    const { error: err } = await sb.auth.signInWithOAuth({
+      provider: 'google',
+      options: { redirectTo: window.location.origin },
+    });
+    if (err) setError(err.message);
+  }
+
   async function handleSubmit() {
     setError('');
     if (!email || !password) { setError('Completá email y contraseña.'); return; }
@@ -1229,6 +1242,26 @@ function AuthModal({ intent, initialMode, onClose, onAuthed }) {
         {mode === 'signup' && intent !== 'subscribe' && (
           <p className="text-sea-500 text-sm mb-6">Creá tu cuenta gratis — suscribirte para desbloquear el contenido es un paso aparte, cuando quieras.</p>
         )}
+
+        {GOOGLE_LOGIN_ENABLED && (
+          <div className="mt-2 mb-2">
+            <button onClick={handleGoogle} className="w-full flex items-center justify-center gap-3 border-2 border-mist-200 bg-white rounded-full py-2.5 font-semibold text-sea-800 hover:border-mist-300 hover:bg-mist-50 hover:-translate-y-0.5 active:scale-[.98] transition-all duration-200">
+              <svg width="18" height="18" viewBox="0 0 48 48" aria-hidden="true">
+                <path fill="#FFC107" d="M43.6 20.5H42V20H24v8h11.3c-1.6 4.7-6.1 8-11.3 8-6.6 0-12-5.4-12-12s5.4-12 12-12c3.1 0 5.9 1.2 8 3.1l5.7-5.7C34 6.1 29.3 4 24 4 12.9 4 4 12.9 4 24s8.9 20 20 20 20-8.9 20-20c0-1.3-.1-2.3-.4-3.5z"/>
+                <path fill="#FF3D00" d="M6.3 14.7l6.6 4.8C14.7 15.1 19 12 24 12c3.1 0 5.9 1.2 8 3.1l5.7-5.7C34 6.1 29.3 4 24 4 16.3 4 9.7 8.3 6.3 14.7z"/>
+                <path fill="#4CAF50" d="M24 44c5.2 0 9.9-2 13.4-5.2l-6.2-5.2C29.2 35.1 26.7 36 24 36c-5.2 0-9.6-3.3-11.3-7.9l-6.5 5C9.6 39.6 16.2 44 24 44z"/>
+                <path fill="#1976D2" d="M43.6 20.5H42V20H24v8h11.3c-.8 2.2-2.2 4.2-4.1 5.6l6.2 5.2C39.9 36.7 44 31 44 24c0-1.3-.1-2.3-.4-3.5z"/>
+              </svg>
+              Continuar con Google
+            </button>
+            <div className="flex items-center gap-3 my-4">
+              <div className="h-px bg-mist-100 flex-1"></div>
+              <span className="text-xs text-sea-400 font-semibold">o con tu email</span>
+              <div className="h-px bg-mist-100 flex-1"></div>
+            </div>
+          </div>
+        )}
+
         <div className="space-y-4 mt-2">
           {mode === 'signup' && (
             <div>
