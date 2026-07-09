@@ -1,0 +1,1455 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Estado del Mar — Ventanas a tu mundo interior</title>
+<meta name="description" content="Un espacio de contenido psicoeducativo, filosófico y espiritual organizado en ventanas temáticas." />
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%8C%8A%3C/text%3E%3C/svg%3E" />
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=Nunito+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+  tailwind.config = {
+    theme: {
+      extend: {
+        fontFamily: {
+          serif: ['Cormorant Garamond', 'serif'],
+          sans: ['Nunito Sans', 'sans-serif'],
+        },
+        colors: {
+          sea: {
+            50: '#eef6f7', 100: '#d3e8ec', 200: '#a8d1d9', 300: '#7ab7c4',
+            400: '#4f9baa', 500: '#2f7f8f', 600: '#236575', 700: '#1d515f',
+            800: '#193f4a', 900: '#122b33', 950: '#0a1a20',
+          },
+          sand: {
+            50: '#fdfaf4', 100: '#f7efdd', 200: '#efdcb8', 300: '#e4c690', 400: '#d7ab68',
+          },
+        },
+        keyframes: {
+          drift: { '0%,100%': { transform: 'translateY(0px)' }, '50%': { transform: 'translateY(-8px)' } },
+          fadein: { '0%': { opacity: 0, transform: 'translateY(6px)' }, '100%': { opacity: 1, transform: 'translateY(0)' } },
+        },
+        animation: {
+          drift: 'drift 6s ease-in-out infinite',
+          fadein: 'fadein 0.4s ease-out both',
+        },
+      },
+    },
+  };
+</script>
+<style>
+  html { scroll-behavior: smooth; }
+  body { font-family: 'Nunito Sans', sans-serif; }
+  .font-serif { font-family: 'Cormorant Garamond', serif; }
+  ::-webkit-scrollbar { width: 10px; height: 10px; }
+  ::-webkit-scrollbar-track { background: #eef6f7; }
+  ::-webkit-scrollbar-thumb { background: #7ab7c4; border-radius: 9999px; }
+  ::-webkit-scrollbar-thumb:hover { background: #4f9baa; }
+</style>
+</head>
+<body class="bg-sand-50 text-sea-900 antialiased">
+<div id="root"></div>
+
+<!--
+  Este archivo es la versión "compilada": el mismo código de los 12
+  componentes, empaquetado en un solo HTML para que abra sí o sí con
+  doble clic (los navegadores bloquean por seguridad que un HTML abierto
+  como file:// vaya a buscar otros .js sueltos, por eso la versión repartida
+  en archivos se veía en blanco).
+
+  El código fuente organizado por componente sigue viviendo, sin cambios,
+  en estos 12 archivos (útiles como referencia o para un desarrollador que
+  arme el proyecto real con Vite/Next más adelante):
+
+    estado-del-mar.01-data.js              -> preguntas, niveles y contenido de las 10 ventanas
+    estado-del-mar.02-ui-basics.js         -> piezas chicas: ola, puntitos de progreso, candado, Modal
+    estado-del-mar.03-diagnostic-quiz.js   -> el mini check-in
+    estado-del-mar.04-slide-viewer.js      -> el visor de diapositivas (contenido psicoeducativo)
+    estado-del-mar.05-meditation-player.js -> el reproductor de meditación simulado
+    estado-del-mar.06-exercise-checklist.js-> el ejercicio práctico con checklist
+    estado-del-mar.07-topic-card.js        -> la ventana circular + la grilla de ventanas
+    estado-del-mar.08-layout.js            -> header, portada, "cómo funciona", precio, pie
+    estado-del-mar.09-modals.js            -> modal de suscripción y de cuenta
+    estado-del-mar.10-topic-detail.js      -> la pantalla de una ventana abierta
+    estado-del-mar.11-admin-panel.js       -> panel de administración (demo)
+    estado-del-mar.12-app-root.js          -> el componente App y el render final
+-->
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.3.1/umd/react.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.3.1/umd/react-dom.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.24.7/babel.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+
+<script type="text/babel" data-presets="react">
+/* ===== estado-del-mar.00-supabase.js ===== */
+
+const SUPABASE_URL = 'https://rtpwhzahrvubelzvfvoh.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJ0cHdoemFocnZ1YmVsenZmdm9oIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODM1MzQ1ODQsImV4cCI6MjA5OTExMDU4NH0.7rEH2dkekYqn6eBcFXGwkGHhiuGH6PtsecPxdDW8P7g';
+const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+/* ===== estado-del-mar.01-data.js ===== */
+
+const LIKERT = [
+  { label: 'Nunca', value: 0 },
+  { label: 'A veces', value: 1 },
+  { label: 'Frecuentemente', value: 2 },
+  { label: 'Casi siempre', value: 3 },
+];
+
+const GRADIENT_PRESETS = [
+  'from-sky-600 to-slate-800',
+  'from-slate-400 to-slate-600',
+  'from-cyan-700 to-blue-900',
+  'from-amber-400 to-orange-600',
+  'from-emerald-400 to-teal-600',
+  'from-rose-400 to-pink-600',
+  'from-orange-300 to-amber-600',
+  'from-teal-300 to-emerald-600',
+  'from-indigo-900 to-slate-950',
+  'from-violet-600 to-indigo-900',
+];
+
+const EMOJI_PRESETS = ['🌊','🌧️','⚓','🧭','🌱','💞','🏡','🍃','🌑','🌌','✨','🕊️','🌙','🔥','🌸'];
+
+function makeDefaultLevels() {
+  return [
+    { min: 0, max: 4, label: 'Marea calma', message: 'Este tema está presente, pero no te desborda. Buen momento para explorarlo con curiosidad, sin urgencia.' },
+    { min: 5, max: 8, label: 'Oleaje moderado', message: 'Hay algo acá que se repite y que vale la pena mirar de frente antes de que crezca.' },
+    { min: 9, max: 12, label: 'Mar agitado', message: 'Este tema está pidiendo espacio real hoy. Priorizalo antes que otras cosas esta semana.' },
+  ];
+}
+
+function makeDefaultQuiz(title) {
+  const t = title.toLowerCase();
+  return [
+    { text: `¿Sentís que el tema de ${t} está presente en tu día a día?` },
+    { text: `¿Te cuesta pensar en ${t} sin sentir incomodidad?` },
+    { text: `¿${title} influye en decisiones que tomás habitualmente?` },
+    { text: `¿Te gustaría tener herramientas concretas para ${t}?` },
+  ];
+}
+
+const INITIAL_TOPICS = [
+  {
+    id: 'ansiedad', title: 'Ansiedad', emoji: '🌊', gradient: 'from-sky-600 to-slate-800',
+    description: 'Cuando la mente se adelanta al presente y el cuerpo lo siente primero.',
+    questions: [
+      { text: '¿Sentís el cuerpo tenso, acelerado o en alerta sin una razón clara?' },
+      { text: '¿Te cuesta quedarte en el presente sin pensar en lo que podría salir mal?' },
+      { text: '¿Evitás situaciones por anticipar que te vas a sentir mal?' },
+      { text: '¿La preocupación aparece incluso cuando no hay ningún problema real enfrente?' },
+    ],
+    levels: [
+      { min: 0, max: 4, label: 'Marea calma', message: 'Tu ansiedad aparece de forma puntual, no te está gobernando. Buen momento para conocer tus propias señales de alerta antes de que se acumulen.' },
+      { min: 5, max: 8, label: 'Oleaje moderado', message: 'Hay una activación que se repite y que ya estás notando. Conviene darle un espacio antes de que se instale.' },
+      { min: 9, max: 12, label: 'Mar agitado', message: 'Tu sistema de alarma está trabajando horas extra. Priorizá la práctica de regulación antes que cualquier otra cosa esta semana.' },
+    ],
+    slides: [
+      { title: '¿Qué es realmente la ansiedad?', text: 'Es un sistema de alarma diseñado para protegerte. El problema no es que suene, sino cuándo y con qué intensidad lo hace.' },
+      { title: 'El cuerpo avisa antes que la mente entienda', text: 'Taquicardia, tensión en el pecho, pensamientos acelerados: el cuerpo suele anticiparse a lo que la mente todavía no nombró.' },
+      { title: 'Anticipar no es lo mismo que predecir', text: 'La mente ansiosa confunde "podría pasar" con "va a pasar". Distinguir esto es el primer paso para bajar la intensidad.' },
+      { title: 'De la alarma a la regulación', text: 'No se trata de eliminar la ansiedad, sino de ampliar el margen entre sentirla y reaccionar desde ella.' },
+    ],
+    meditation: { title: 'Respiración 4-7-8', duration: '6 min', description: 'Una técnica simple para bajarle el volumen a la activación del cuerpo antes de que se convierta en pensamiento.' },
+    exercise: { title: 'Registro de anticipaciones', steps: [
+      'Durante 3 días, anotá qué estás anticipando que va a salir mal.',
+      'Al final del día, escribí qué pasó realmente.',
+      'Comparé ambas columnas: ¿cuántas veces coincidieron?',
+      'No busques dejar de anticipar, solo empezá a notar el patrón.',
+    ]},
+  },
+  {
+    id: 'desilusion', title: 'Desilusión', emoji: '🌧️', gradient: 'from-slate-400 to-slate-600',
+    description: 'Cuando la realidad no coincidió con lo que esperabas, y todavía duele.',
+    questions: [
+      { text: '¿Sentís que invertiste expectativa en algo o alguien que no respondió como esperabas?' },
+      { text: '¿Te cuesta soltar la idea de cómo "debería" haber sido?' },
+      { text: '¿Aparece resentimiento o tristeza al recordar la situación?' },
+      { text: '¿Te cuesta confiar de nuevo después de esa desilusión?' },
+    ],
+    levels: [
+      { min: 0, max: 4, label: 'Marea calma', message: 'La desilusión pasó, pero dejó una marca liviana. Buen momento para cerrarla del todo.' },
+      { min: 5, max: 8, label: 'Oleaje moderado', message: 'Todavía hay una expectativa que no terminaste de soltar. Vale la pena mirarla de frente.' },
+      { min: 9, max: 12, label: 'Mar agitado', message: 'Esta desilusión sigue muy presente. Antes de avanzar, necesita ser nombrada y despedida.' },
+    ],
+    slides: [
+      { title: 'Desilusión: el duelo de una expectativa', text: 'No es solo lo que pasó, es la versión del futuro que imaginabas y que ya no va a existir.' },
+      { title: '¿De quién era esa expectativa?', text: 'A veces nos desilusiona no cumplir la expectativa de otros, no la propia. Vale la pena distinguir.' },
+      { title: 'El resentimiento como expectativa congelada', text: 'El resentimiento suele ser una expectativa que nos negamos a soltar, actualizada en modo reproche.' },
+      { title: 'Confiar de nuevo no es olvidar', text: 'Soltar una desilusión no significa que lo que pasó estuvo bien. Significa dejar de pagar el precio dos veces.' },
+    ],
+    meditation: { title: 'Soltar lo que esperabas', duration: '8 min', description: 'Un espacio para despedir la expectativa que no se cumplió, sin apurar el proceso.' },
+    exercise: { title: 'Carta a la expectativa', steps: [
+      'Escribí una carta a la expectativa que no se cumplió, como si fuera una persona.',
+      'Contale qué esperabas de ella y qué sentiste cuando no pasó.',
+      'Cerrá la carta despidiéndote de esa versión imaginada.',
+      'No hace falta enviarla a nadie: es un cierre para vos.',
+    ]},
+  },
+  {
+    id: 'control', title: 'Control', emoji: '⚓', gradient: 'from-cyan-700 to-blue-900',
+    description: 'Querer que las cosas y las personas sean como uno cree que deberían ser.',
+    questions: [
+      { text: '¿Te cuesta delegar porque sentís que "nadie lo hace como vos"?' },
+      { text: '¿Te frustrás cuando los planes cambian de improviso?' },
+      { text: '¿Intentás anticipar todos los escenarios posibles antes de decidir?' },
+      { text: '¿Te cuesta aceptar decisiones o formas de ser de otros que no compartís?' },
+    ],
+    levels: [
+      { min: 0, max: 4, label: 'Marea calma', message: 'Tenés margen para soltar sin que se sienta como un riesgo. Podés practicar en situaciones de bajo costo.' },
+      { min: 5, max: 8, label: 'Oleaje moderado', message: 'El control se activa en ciertas áreas puntuales. Identificarlas te va a dar alivio rápido.' },
+      { min: 9, max: 12, label: 'Mar agitado', message: 'El control se volvió una forma de manejar la ansiedad de fondo. Vale la pena mirar qué está tratando de proteger.' },
+    ],
+    slides: [
+      { title: 'Control: una estrategia, no un defecto', text: 'Controlar fue, en algún momento, la forma más inteligente que encontraste para sentirte a salvo.' },
+      { title: 'Lo que sí depende de mí', text: 'Gran parte del malestar viene de invertir energía en lo que no podemos decidir por otros.' },
+      { title: 'El costo invisible de controlar todo', text: 'Sostener el control todo el tiempo cansa, y suele alejar a las personas que queremos cerca.' },
+      { title: 'Soltar no es lo mismo que resignarse', text: 'Soltar el control de un resultado no significa dejar de importarte. Significa dejar de pagarlo con el cuerpo.' },
+    ],
+    meditation: { title: 'Manos abiertas', duration: '7 min', description: 'Una meditación para practicar, en el cuerpo, la sensación de soltar sin perder.' },
+    exercise: { title: 'Lista de lo mío / lo de otros', steps: [
+      'Dividí una hoja en dos columnas: "depende de mí" y "no depende de mí".',
+      'Anotá ahí la situación que te está costando soltar.',
+      'Ubicá cada aspecto en la columna que corresponda.',
+      'Elegí un solo aspecto de "lo mío" para accionar esta semana.',
+    ]},
+  },
+  {
+    id: 'sentido', title: 'Sentido de la vida', emoji: '🧭', gradient: 'from-amber-400 to-orange-600',
+    description: 'Preguntas que aparecen cuando el "para qué" se vuelve urgente.',
+    questions: [
+      { text: '¿Sentís que tus días se repiten sin un para qué claro?' },
+      { text: '¿Te cuesta encontrar motivación incluso en cosas que antes disfrutabas?' },
+      { text: '¿Te preguntás si el camino que elegiste es realmente el tuyo?' },
+      { text: '¿Sentís una desconexión entre lo que hacés y lo que valorás?' },
+    ],
+    levels: [
+      { min: 0, max: 4, label: 'Marea calma', message: 'La pregunta por el sentido está presente pero no te desborda. Buen momento para explorarla con curiosidad.' },
+      { min: 5, max: 8, label: 'Oleaje moderado', message: 'Hay una brecha entre cómo vivís y lo que te da sentido. Nombrarla es el primer paso.' },
+      { min: 9, max: 12, label: 'Mar agitado', message: 'La pregunta por el sentido se volvió urgente. Vale la pena darle espacio real, no solo de a ratos.' },
+    ],
+    slides: [
+      { title: 'Buscar sentido no es encontrar una respuesta única', text: 'El sentido no es un destino fijo, es algo que se construye y se revisa a lo largo de la vida.' },
+      { title: 'Estar ocupado no es lo mismo que sentir que importa', text: 'Se puede estar todo el día ocupado y sentir, igual, que nada de eso importa demasiado.' },
+      { title: 'Valores, no metas', text: 'Las metas se cumplen y se terminan. Los valores son la dirección; podés caminarlos todos los días.' },
+      { title: 'El sentido también se construye en lo pequeño', text: 'No hace falta una gran epifanía. A veces el sentido aparece en un gesto cotidiano hecho con presencia.' },
+    ],
+    meditation: { title: 'Conectar con lo que importa hoy', duration: '8 min', description: 'Un espacio para preguntarte, sin apuro, qué te gustaría que hoy haya tenido de valioso.' },
+    exercise: { title: 'Los 5 por qué', steps: [
+      'Elegí algo que hacés seguido (trabajo, rutina, vínculo).',
+      'Preguntate "¿por qué hago esto?" y respondé.',
+      'A esa respuesta, volvé a preguntarle "¿por qué?" otras 4 veces.',
+      'Mirá qué valor apareció al final del camino.',
+    ]},
+  },
+  {
+    id: 'crianza', title: 'Crianza de hijos', emoji: '🌱', gradient: 'from-emerald-400 to-teal-600',
+    description: 'Acompañar sin perderse una misma en el camino.',
+    questions: [
+      { text: '¿Sentís culpa por cómo reaccionaste frente a tu hijo/a en algún momento?' },
+      { text: '¿Te cuesta sostener límites sin sentir que herís el vínculo?' },
+      { text: '¿Sentís que tus propias necesidades quedan siempre últimas?' },
+      { text: '¿Te cuesta separar tu propia historia de infancia de cómo criás hoy?' },
+    ],
+    levels: [
+      { min: 0, max: 4, label: 'Marea calma', message: 'Tenés una base sólida. Buen momento para afinar detalles, no para exigirte más.' },
+      { min: 5, max: 8, label: 'Oleaje moderado', message: 'Hay tensión entre lo que esperás de vos y lo que podés sostener día a día. Merece ser mirado con amabilidad.' },
+      { min: 9, max: 12, label: 'Mar agitado', message: 'Estás exigida más allá de lo sostenible. Cuidarte a vos también es parte de criar bien.' },
+    ],
+    slides: [
+      { title: 'La culpa parental: ¿de dónde viene?', text: 'Gran parte de la culpa en la crianza viene de compararnos con un ideal imposible de sostener siempre.' },
+      { title: 'Reparar vale más que no fallar nunca', text: 'Ningún vínculo se sostiene en la perfección. Se sostiene en la capacidad de volver después de un tropiezo.' },
+      { title: 'Poner límites también es cuidar', text: 'Un límite claro, dicho con calma, cuida el vínculo tanto como un abrazo.' },
+      { title: 'Lo que heredamos sin darnos cuenta', text: 'Muchas reacciones automáticas en la crianza vienen de cómo nos criaron a nosotros, no de la situación actual.' },
+    ],
+    meditation: { title: 'Pausa antes de responder', duration: '5 min', description: 'Un micro-espacio para usar en el momento exacto en que sentís que vas a reaccionar en caliente.' },
+    exercise: { title: 'Repará el momento', steps: [
+      'Pensá en un momento reciente en que reaccionaste de un modo que no te gustó.',
+      'Elegí un gesto simple de reparación (una palabra, un abrazo, una charla corta).',
+      'Llevalo a cabo hoy, sin necesidad de una gran explicación.',
+      'Notá cómo se siente el vínculo después de ese gesto.',
+    ]},
+  },
+  {
+    id: 'pareja', title: 'Pareja', emoji: '💞', gradient: 'from-rose-400 to-pink-600',
+    description: 'Los vínculos que más nos transforman también son los que más nos desafían.',
+    questions: [
+      { text: '¿Sentís que discuten siempre por versiones parecidas del mismo tema?' },
+      { text: '¿Te cuesta sentirte escuchado/a en la pareja?' },
+      { text: '¿Aparece la sensación de estar más lejos que antes?' },
+      { text: '¿Te cuesta pedir lo que necesitás sin que se convierta en reclamo?' },
+    ],
+    levels: [
+      { min: 0, max: 4, label: 'Marea calma', message: 'El vínculo tiene buena base. Buen momento para cuidar los detalles antes de que se acumulen.' },
+      { min: 5, max: 8, label: 'Oleaje moderado', message: 'Hay un patrón que se repite y que todavía no encontró una salida distinta.' },
+      { min: 9, max: 12, label: 'Mar agitado', message: 'La distancia se siente real. Vale la pena parar la pelota antes de seguir discutiendo del mismo modo.' },
+    ],
+    slides: [
+      { title: 'Por qué discutimos siempre por lo mismo', text: 'Detrás de la discusión repetida casi siempre hay una necesidad no dicha, no un defecto del otro.' },
+      { title: 'Escuchar para entender, no para responder', text: 'Muchas discusiones se alargan porque ambos esperan su turno para hablar, no para escuchar.' },
+      { title: 'La queja esconde un pedido', text: 'Casi toda queja tiene, debajo, un pedido concreto que todavía no se formuló como tal.' },
+      { title: 'La distancia también se construye de a poco', text: 'Así como el acercamiento, el distanciamiento se arma con pequeños gestos repetidos. Se puede revertir del mismo modo.' },
+    ],
+    meditation: { title: 'Volver al cuerpo antes de responder', duration: '6 min', description: 'Para usar en medio de una discusión, antes de contestar desde el impulso.' },
+    exercise: { title: 'La queja transformada en pedido', steps: [
+      'Elegí una queja frecuente hacia tu pareja.',
+      'Identificá qué necesidad hay debajo de esa queja.',
+      'Reescribila como un pedido concreto y accionable.',
+      'Compartila en un momento de calma, no en medio del conflicto.',
+    ]},
+  },
+  {
+    id: 'armonia', title: 'Armonía familiar', emoji: '🏡', gradient: 'from-orange-300 to-amber-600',
+    description: 'Vínculos de origen que siguen pesando en el presente.',
+    questions: [
+      { text: '¿Sentís tensión al reunirte con tu familia de origen?' },
+      { text: '¿Ocupás siempre el mismo rol en las reuniones familiares (el que media, el que calla, el que carga)?' },
+      { text: '¿Te cuesta poner límites sin sentir que traicionás a la familia?' },
+      { text: '¿Aparecen viejos conflictos sin resolver en cada encuentro?' },
+    ],
+    levels: [
+      { min: 0, max: 4, label: 'Marea calma', message: 'Hay tensiones puntuales, pero el vínculo de base sostiene. Buen momento para observarlas sin reaccionar.' },
+      { min: 5, max: 8, label: 'Oleaje moderado', message: 'Hay un patrón familiar que se repite en cada encuentro. Nombrarlo ya cambia el lugar desde el que lo vivís.' },
+      { min: 9, max: 12, label: 'Mar agitado', message: 'El peso familiar se siente fuerte hoy. Vale la pena sostenerte con herramientas concretas antes del próximo encuentro.' },
+    ],
+    slides: [
+      { title: 'Los roles que no elegimos', text: 'En cada familia hay roles asignados de chicos —el responsable, el problemático, el invisible— que seguimos sosteniendo de grandes.' },
+      { title: 'Lealtades invisibles', text: 'A veces repetimos patrones familiares por lealtad inconsciente, no porque nos hagan bien.' },
+      { title: 'Poner un límite no es un abandono', text: 'Cuidar tu espacio en la familia no te convierte en el que se fue. Te convierte en alguien que se cuida.' },
+      { title: 'Mirar a la familia con otros ojos', text: 'Ver a tus padres o hermanos como personas con su propia historia, no solo en su rol familiar, cambia el vínculo.' },
+    ],
+    meditation: { title: 'Mirar a la familia con otros ojos', duration: '8 min', description: 'Una meditación para bajar la reactividad antes de un encuentro familiar que sabés que puede tensionarse.' },
+    exercise: { title: 'Mapa de vínculos familiares', steps: [
+      'Dibujá un esquema simple con vos en el centro y cada familiar alrededor.',
+      'Anotá al lado de cada uno el rol que sentís que ocupás con esa persona.',
+      'Marcá con un color los vínculos que te generan tensión.',
+      'Elegí uno solo para empezar a mirar distinto este mes.',
+    ]},
+  },
+  {
+    id: 'desapego', title: 'Desapego', emoji: '🍃', gradient: 'from-teal-300 to-emerald-600',
+    description: 'Soltar sin dejar de amar.',
+    questions: [
+      { text: '¿Te cuesta aceptar cuando algo o alguien ya no está?' },
+      { text: '¿Sentís miedo a perder el control cuando pensás en soltar?' },
+      { text: '¿Confundís desapego con dejar de importarte?' },
+      { text: '¿Te aferrás a personas, roles o etapas que ya cambiaron?' },
+    ],
+    levels: [
+      { min: 0, max: 4, label: 'Marea calma', message: 'Tenés cierta soltura para dejar ir. Podés seguir entrenando esa habilidad en lo cotidiano.' },
+      { min: 5, max: 8, label: 'Oleaje moderado', message: 'Hay algo puntual a lo que te cuesta soltar. Ponerle nombre ya alivia parte del peso.' },
+      { min: 9, max: 12, label: 'Mar agitado', message: 'El apego a esta situación está costando mucha energía. Este es el momento de mirarlo de frente.' },
+    ],
+    slides: [
+      { title: 'Apego y desapego no son opuestos', text: 'Desapegarse no es dejar de querer. Es dejar de necesitar que algo sea de una forma específica para estar bien.' },
+      { title: 'Lo que tememos perder al soltar', text: 'Muchas veces no tememos perder a la persona o la situación, sino la versión de nosotros que existía con ella.' },
+      { title: 'Sostener sin aferrar', text: 'Se puede amar profundamente algo y, al mismo tiempo, no necesitar controlarlo para que dure.' },
+      { title: 'El desapego como práctica, no como logro', text: 'No es un estado que se alcanza una vez. Es un músculo que se entrena en las despedidas pequeñas de todos los días.' },
+    ],
+    meditation: { title: 'Sostener sin aferrar', duration: '7 min', description: 'Una meditación para practicar, en el cuerpo, la diferencia entre sostener algo y aferrarte a eso.' },
+    exercise: { title: 'Lo que sí depende de mí', steps: [
+      'Nombrá aquello a lo que te está costando soltar.',
+      'Escribí qué es lo que más temés que pase si lo soltás.',
+      'Separá qué parte de eso depende realmente de vos.',
+      'Elegí una acción pequeña, de esa parte, para esta semana.',
+    ]},
+  },
+  {
+    id: 'miedos', title: 'Miedos', emoji: '🌑', gradient: 'from-indigo-900 to-slate-950',
+    description: 'Esas voces internas que se anticipan al peligro, incluso cuando no existe.',
+    questions: [
+      { text: '¿Hay algo que evitás sistemáticamente por miedo?' },
+      { text: '¿El miedo aparece incluso cuando sabés, racionalmente, que no hay peligro real?' },
+      { text: '¿Te cuesta nombrar en voz alta a qué le tenés miedo?' },
+      { text: '¿El miedo te frena de tomar decisiones que sabés que querés tomar?' },
+    ],
+    levels: [
+      { min: 0, max: 4, label: 'Marea calma', message: 'El miedo aparece, pero no te frena. Buen momento para conocerlo mejor, sin urgencia.' },
+      { min: 5, max: 8, label: 'Oleaje moderado', message: 'Hay un miedo puntual que empezó a limitarte en algunas decisiones.' },
+      { min: 9, max: 12, label: 'Mar agitado', message: 'El miedo está ocupando más espacio del que te gustaría. Empezar a nombrarlo ya es un movimiento importante.' },
+    ],
+    slides: [
+      { title: 'El miedo como mensajero, no como enemigo', text: 'El miedo no está para arruinarte el plan. Está avisando algo, aunque no siempre acierte en la medida.' },
+      { title: 'Miedo real vs. miedo imaginado', text: 'El cuerpo no siempre distingue entre un peligro presente y uno que solo estamos imaginando con detalle.' },
+      { title: 'Evitar alivia hoy, agranda mañana', text: 'Cada vez que evitamos por miedo, el alivio es inmediato pero el miedo crece un poco para la próxima vez.' },
+      { title: 'Nombrar el miedo le baja el volumen', text: 'Ponerle palabras concretas a un miedo difuso es uno de los movimientos más simples para empezar a manejarlo.' },
+    ],
+    meditation: { title: 'Acompañar al miedo sin pelear', duration: '6 min', description: 'Un espacio para estar con el miedo sin la urgencia de eliminarlo de inmediato.' },
+    exercise: { title: 'Nombrar el miedo', steps: [
+      'Escribí, con la mayor precisión posible, a qué le tenés miedo.',
+      'Preguntate: ¿qué es lo peor que podría pasar realmente?',
+      'Preguntate: si pasara, ¿qué harías después?',
+      'Notá cómo cambia el miedo cuando le ponés palabras concretas en vez de dejarlo difuso.',
+    ]},
+  },
+  {
+    id: 'espiritualidad', title: 'Espiritualidad y Trascendencia', emoji: '🌌', gradient: 'from-violet-600 to-indigo-900',
+    description: 'Ir más allá de la personalidad: la dimensión transpersonal de la experiencia humana.',
+    questions: [
+      { text: '¿Sentís curiosidad por preguntas que van más allá de lo cotidiano (el sentido, la muerte, la conciencia)?' },
+      { text: '¿Buscás momentos de silencio o contemplación en tu rutina?' },
+      { text: '¿Sentís conexión con algo más grande que vos (la naturaleza, lo colectivo, lo trascendente)?' },
+      { text: '¿Te interesa explorar tu experiencia interior más allá de tus pensamientos y emociones habituales?' },
+    ],
+    levels: [
+      { min: 0, max: 4, label: 'Explorando', message: 'Estás empezando a asomarte a estas preguntas. No hace falta ninguna certeza para arrancar, solo curiosidad.' },
+      { min: 5, max: 8, label: 'Profundizando', message: 'Ya hay una búsqueda activa. Buen momento para sostener una práctica regular, aunque sea breve.' },
+      { min: 9, max: 12, label: 'Integrando', message: 'La dimensión transpersonal ya es parte de tu vida cotidiana. Podés profundizar prácticas más sostenidas.' },
+    ],
+    slides: [
+      { title: 'Más allá del yo', text: 'Lo transpersonal invita a mirar la experiencia humana más allá de la personalidad, la historia y el rol que ocupamos.' },
+      { title: 'El silencio como práctica', text: 'En muchas tradiciones, el silencio no es la ausencia de algo, sino el espacio donde aparece lo esencial.' },
+      { title: 'Conexión con lo colectivo', text: 'Sentirse parte de algo más grande —la naturaleza, la humanidad, lo trascendente— no requiere una creencia específica.' },
+      { title: 'Preguntas sin respuesta única', text: 'El sentido, la muerte, la conciencia: son preguntas que se sostienen, más que se responden de una vez y para siempre.' },
+    ],
+    meditation: { title: 'Silencio y presencia', duration: '10 min', description: 'Un espacio de quietud, sin agenda, para simplemente estar.' },
+    exercise: { title: 'Práctica contemplativa diaria', steps: [
+      'Elegí un momento fijo del día (al despertar o antes de dormir).',
+      'Sentate en silencio durante 5 minutos, sin celular ni distracciones.',
+      'No busques "lograr" nada en particular, solo sostené la quietud.',
+      'Sostenelo 7 días y notá qué cambia en tu forma de mirar el resto del día.',
+    ]},
+  },
+];
+
+function computeLevel(total, levels) {
+  return levels.find(l => total >= l.min && total <= l.max) || levels[levels.length - 1];
+}
+
+function formatDate(d) {
+  if (!d) return '';
+  return new Date(d).toLocaleDateString('es-AR', { day: 'numeric', month: 'long', year: 'numeric' });
+}
+
+function slugify(str) {
+  return str.toLowerCase().normalize('NFD').replace(new RegExp('[' + String.fromCharCode(768) + '-' + String.fromCharCode(879) + ']', 'g'), '')
+    .replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '') || ('ventana-' + Date.now());
+}
+
+/* ===== estado-del-mar.02-ui-basics.js ===== */
+
+function WaveDivider({ className, flip }) {
+  return (
+    <div className={"w-full overflow-hidden leading-none " + (className || '')} style={flip ? { transform: 'scaleY(-1)' } : {}}>
+      <svg viewBox="0 0 1440 100" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="none" className="w-full h-12 md:h-20">
+        <path fill="currentColor" d="M0,50L60,45.7C120,41,240,33,360,37C480,41,600,58,720,62C840,66,960,58,1080,50C1200,41,1320,33,1380,29.3L1440,25L1440,100L1380,100C1320,100,1200,100,1080,100C960,100,840,100,720,100C600,100,480,100,360,100C240,100,120,100,60,100L0,100Z"></path>
+      </svg>
+    </div>
+  );
+}
+
+function ProgressDots({ count, current }) {
+  return (
+    <div className="flex items-center justify-center gap-2">
+      {Array.from({ length: count }).map((_, i) => (
+        <div key={i} className={"h-2 rounded-full transition-all " + (i === current ? "w-6 bg-sea-600" : "w-2 bg-sea-200")}></div>
+      ))}
+    </div>
+  );
+}
+
+function Lock({ className }) {
+  return <span className={className}>🔒</span>;
+}
+
+function Modal({ onClose, children, maxW }) {
+  return (
+    <div className="fixed inset-0 z-50 bg-sea-950/60 backdrop-blur-sm flex items-center justify-center p-4" onClick={onClose}>
+      <div onClick={e => e.stopPropagation()} className={"bg-white rounded-3xl shadow-2xl w-full max-h-[90vh] overflow-y-auto " + (maxW || "max-w-md")}>
+        {children}
+      </div>
+    </div>
+  );
+}
+
+/* ===== estado-del-mar.03-diagnostic-quiz.js ===== */
+
+function DiagnosticQuiz({ topic, onComplete }) {
+  const [answers, setAnswers] = React.useState([]);
+  const [current, setCurrent] = React.useState(0);
+  const [result, setResult] = React.useState(null);
+
+  function choose(value) {
+    const next = [...answers, value];
+    setAnswers(next);
+    if (current + 1 < topic.questions.length) {
+      setCurrent(current + 1);
+    } else {
+      const total = next.reduce((a, b) => a + b, 0);
+      const level = computeLevel(total, topic.levels);
+      setResult({ total, level });
+      if (onComplete) onComplete(level);
+    }
+  }
+
+  function restart() {
+    setAnswers([]);
+    setCurrent(0);
+    setResult(null);
+  }
+
+  if (result) {
+    return (
+      <div className="animate-fadein max-w-xl mx-auto text-center py-6">
+        <p className="uppercase tracking-widest text-xs text-sea-500 font-semibold mb-2">Tu check-in de hoy</p>
+        <h3 className="font-serif text-3xl md:text-4xl font-semibold text-sea-900 mb-4">{result.level.label}</h3>
+        <p className="text-sea-700 leading-relaxed mb-6">{result.level.message}</p>
+        <p className="text-xs text-sea-400 mb-6 italic">Esto es una orientación para elegir contenido, no un diagnóstico clínico. Si algo de esto te desborda, una consulta con un profesional siempre suma.</p>
+        <button onClick={restart} className="text-sm text-sea-600 underline hover:text-sea-800">Volver a hacer el check-in</button>
+      </div>
+    );
+  }
+
+  const q = topic.questions[current];
+
+  return (
+    <div className="max-w-xl mx-auto py-4">
+      <div className="mb-6"><ProgressDots count={topic.questions.length} current={current} /></div>
+      <p className="text-center text-xs text-sea-400 mb-2">Pregunta {current + 1} de {topic.questions.length}</p>
+      <h3 className="text-center font-serif text-2xl md:text-3xl text-sea-900 mb-8 px-2">{q.text}</h3>
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        {LIKERT.map(opt => (
+          <button key={opt.label} onClick={() => choose(opt.value)}
+            className="rounded-2xl border-2 border-sea-100 hover:border-sea-400 hover:bg-sea-50 transition-colors px-5 py-4 text-sea-700 font-medium">
+            {opt.label}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/* ===== estado-del-mar.04-slide-viewer.js ===== */
+
+function SlideViewer({ slides }) {
+  const [i, setI] = React.useState(0);
+  const slide = slides[i];
+  return (
+    <div className="max-w-xl mx-auto py-4">
+      <div className="bg-white rounded-3xl shadow-sm border border-sea-100 p-8 md:p-10 min-h-[220px] flex flex-col justify-center animate-fadein" key={i}>
+        <p className="text-xs uppercase tracking-widest text-sea-400 mb-3">Diapositiva {i + 1} de {slides.length}</p>
+        <h4 className="font-serif text-2xl md:text-3xl text-sea-900 mb-3">{slide.title}</h4>
+        <p className="text-sea-700 leading-relaxed">{slide.text}</p>
+      </div>
+      <div className="flex items-center justify-between mt-6">
+        <button disabled={i === 0} onClick={() => setI(i - 1)}
+          className="px-4 py-2 rounded-full text-sm font-semibold disabled:opacity-30 disabled:cursor-not-allowed text-sea-600 hover:bg-sea-100">
+          ← Anterior
+        </button>
+        <ProgressDots count={slides.length} current={i} />
+        <button disabled={i === slides.length - 1} onClick={() => setI(i + 1)}
+          className="px-4 py-2 rounded-full text-sm font-semibold disabled:opacity-30 disabled:cursor-not-allowed text-sea-600 hover:bg-sea-100">
+          Siguiente →
+        </button>
+      </div>
+      <p className="text-center text-xs text-sea-400 mt-4">Avanzá a tu propio ritmo — cada diapositiva es un disparador para tu propio insight.</p>
+    </div>
+  );
+}
+
+/* ===== estado-del-mar.05-meditation-player.js ===== */
+
+function MeditationPlayer({ meditation }) {
+  const [playing, setPlaying] = React.useState(false);
+  const [progress, setProgress] = React.useState(0);
+  const totalMinutes = parseInt(meditation.duration) || 6;
+
+  React.useEffect(() => {
+    if (!playing) return;
+    const step = 100 / (totalMinutes * 10);
+    const id = setInterval(() => {
+      setProgress(p => {
+        if (p + step >= 100) { setPlaying(false); return 100; }
+        return p + step;
+      });
+    }, 300);
+    return () => clearInterval(id);
+  }, [playing, totalMinutes]);
+
+  function toggle() {
+    if (progress >= 100) setProgress(0);
+    setPlaying(p => !p);
+  }
+
+  const elapsedMin = Math.floor((progress / 100) * totalMinutes);
+  const elapsedSec = Math.floor((((progress / 100) * totalMinutes) % 1) * 60);
+
+  return (
+    <div className="max-w-xl mx-auto py-4">
+      <div className="bg-gradient-to-br from-sea-700 to-sea-900 rounded-3xl shadow-sm p-8 md:p-10 text-center text-white">
+        <p className="text-xs uppercase tracking-widest text-sea-200 mb-2">Meditación guiada</p>
+        <h4 className="font-serif text-2xl md:text-3xl mb-2">{meditation.title}</h4>
+        <p className="text-sea-100 text-sm mb-8">{meditation.description}</p>
+        <button onClick={toggle}
+          className="w-16 h-16 rounded-full bg-white text-sea-800 text-2xl flex items-center justify-center mx-auto mb-6 hover:scale-105 transition-transform shadow-lg">
+          {playing ? '❚❚' : '▶'}
+        </button>
+        <div className="w-full h-1.5 bg-white/20 rounded-full overflow-hidden mb-2">
+          <div className="h-full bg-white transition-all" style={{ width: progress + '%' }}></div>
+        </div>
+        <p className="text-xs text-sea-200">{elapsedMin}:{String(elapsedSec).padStart(2,'0')} / {meditation.duration}</p>
+      </div>
+      <p className="text-center text-xs text-sea-400 mt-4">Audio de ejemplo — acá se integraría el archivo de audio real.</p>
+    </div>
+  );
+}
+
+/* ===== estado-del-mar.06-exercise-checklist.js ===== */
+
+function ExerciseChecklist({ exercise }) {
+  const [done, setDone] = React.useState({});
+  function toggle(i) { setDone(d => ({ ...d, [i]: !d[i] })); }
+  const total = exercise.steps.length;
+  const doneCount = Object.values(done).filter(Boolean).length;
+
+  return (
+    <div className="max-w-xl mx-auto py-4">
+      <div className="bg-white rounded-3xl shadow-sm border border-sea-100 p-8 md:p-10">
+        <p className="text-xs uppercase tracking-widest text-sea-400 mb-2">Ejercicio para poner en práctica</p>
+        <h4 className="font-serif text-2xl md:text-3xl text-sea-900 mb-6">{exercise.title}</h4>
+        <div className="space-y-3">
+          {exercise.steps.map((step, i) => (
+            <label key={i} className={"flex items-start gap-3 p-4 rounded-2xl border cursor-pointer transition-colors " + (done[i] ? "bg-sea-50 border-sea-300" : "border-sea-100 hover:bg-sand-50")}>
+              <input type="checkbox" checked={!!done[i]} onChange={() => toggle(i)} className="mt-1 w-4 h-4 accent-sea-600" />
+              <span className={"text-sea-700 " + (done[i] ? "line-through text-sea-400" : "")}>{step}</span>
+            </label>
+          ))}
+        </div>
+        <p className="text-sm text-sea-500 mt-6 text-center">{doneCount} de {total} pasos completados</p>
+      </div>
+    </div>
+  );
+}
+
+/* ===== estado-del-mar.07-topic-card.js ===== */
+
+function TopicCard({ topic, locked, onClick }) {
+  return (
+    <button onClick={onClick} className="group text-left animate-fadein">
+      <div className={"relative rounded-full aspect-square w-full max-w-[220px] mx-auto bg-gradient-to-br " + topic.gradient + " shadow-lg flex items-center justify-center border-4 border-white group-hover:scale-105 transition-transform duration-300 group-hover:animate-drift"}>
+        <span className="text-5xl">{topic.emoji}</span>
+        {locked && (
+          <div className="absolute -bottom-1 -right-1 bg-white rounded-full w-10 h-10 flex items-center justify-center shadow-md text-lg">
+            <Lock />
+          </div>
+        )}
+      </div>
+      <h3 className="font-serif text-xl font-semibold text-sea-900 text-center mt-4">{topic.title}</h3>
+      <p className="text-sea-600 text-sm text-center mt-1 px-2 line-clamp-2">{topic.description}</p>
+    </button>
+  );
+}
+
+function TopicsGrid({ topics, subscribed, onSelect }) {
+  return (
+    <section id="ventanas" className="max-w-6xl mx-auto px-6 py-20">
+      <div className="text-center max-w-2xl mx-auto mb-14">
+        <p className="uppercase tracking-widest text-xs text-sea-500 font-semibold mb-3">Las ventanas</p>
+        <h2 className="font-serif text-3xl md:text-4xl font-semibold text-sea-900">Cada estado interior tiene su propia ventana</h2>
+        <p className="text-sea-600 mt-4">Elegí la que más resuena con lo que estás atravesando hoy. Podés mirar el menú completo sin suscribirte; para entrar a cada ventana hace falta ser parte de Estado del Mar.</p>
+      </div>
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-x-6 gap-y-12">
+        {topics.map(topic => (
+          <TopicCard key={topic.id} topic={topic} locked={!subscribed} onClick={() => onSelect(topic.id)} />
+        ))}
+      </div>
+    </section>
+  );
+}
+
+/* ===== estado-del-mar.08-layout.js ===== */
+
+function Header({ loggedIn, onNav, onNavigateSection, onOpenAuth, onOpenAccount }) {
+  const [mobileOpen, setMobileOpen] = React.useState(false);
+
+  const navItems = [
+    { id: 'ventanas', label: 'Ventanas' },
+    { id: 'como-funciona', label: 'Cómo funciona' },
+    { id: 'precio', label: 'Precio' },
+  ];
+
+  function handleNavClick(sectionId) {
+    setMobileOpen(false);
+    onNavigateSection(sectionId);
+  }
+
+  return (
+    <header className="sticky top-0 z-40 bg-sand-50/90 backdrop-blur-sm border-b border-sea-100">
+      <div className="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between">
+        <button onClick={() => onNav('home')} className="flex items-center gap-2 font-serif text-xl font-semibold text-sea-900">
+          <span>🌊</span> Estado del Mar
+        </button>
+        <nav className="hidden md:flex items-center gap-8 text-sm font-semibold text-sea-700">
+          {navItems.map(item => (
+            <button key={item.id} onClick={() => handleNavClick(item.id)} className="hover:text-sea-900">{item.label}</button>
+          ))}
+        </nav>
+        <div className="flex items-center gap-3">
+          {loggedIn ? (
+            <button onClick={onOpenAccount} className="text-sm font-semibold text-sea-700 hover:text-sea-900">Mi cuenta</button>
+          ) : (
+            <button onClick={onOpenAuth} className="text-sm font-semibold text-sea-700 hover:text-sea-900">
+              Ingresar
+            </button>
+          )}
+          <button onClick={() => setMobileOpen(o => !o)} className="md:hidden w-9 h-9 flex items-center justify-center text-sea-700 text-xl" aria-label="Abrir menú">
+            {mobileOpen ? '✕' : '☰'}
+          </button>
+        </div>
+      </div>
+      {mobileOpen && (
+        <nav className="md:hidden border-t border-sea-100 bg-sand-50 px-6 py-3 flex flex-col gap-1">
+          {navItems.map(item => (
+            <button key={item.id} onClick={() => handleNavClick(item.id)} className="text-left text-sea-700 font-semibold py-2">{item.label}</button>
+          ))}
+        </nav>
+      )}
+    </header>
+  );
+}
+
+function Hero({ onOpenSubscribe }) {
+  return (
+    <section className="relative bg-gradient-to-b from-sea-800 via-sea-700 to-sea-600 text-white overflow-hidden">
+      <div className="max-w-4xl mx-auto px-6 pt-20 pb-28 text-center relative z-10">
+        <p className="uppercase tracking-[0.2em] text-xs text-sea-200 font-semibold mb-5 animate-fadein">Un espacio para mirar hacia adentro</p>
+        <h1 className="font-serif text-5xl md:text-6xl font-semibold mb-6 animate-fadein">Estado del Mar</h1>
+        <p className="text-lg md:text-xl text-sea-100 max-w-2xl mx-auto leading-relaxed mb-10 animate-fadein">
+          Así como el mar cambia de estado según el día, nosotros también. Elegí la ventana que refleja por dónde estás pasando hoy,
+          y encontrá psicoeducación, meditaciones y ejercicios pensados para acompañarte.
+        </p>
+        <div className="flex flex-col sm:flex-row gap-4 justify-center animate-fadein">
+          <a href="#ventanas" className="bg-white text-sea-800 font-semibold px-7 py-3.5 rounded-full hover:bg-sand-100 transition-colors">Ver las ventanas</a>
+          <a href="#como-funciona" className="border border-white/50 text-white font-semibold px-7 py-3.5 rounded-full hover:bg-white/10 transition-colors">Cómo funciona</a>
+        </div>
+      </div>
+      <div className="text-sand-50 relative z-10"><WaveDivider /></div>
+    </section>
+  );
+}
+
+function HowItWorks() {
+  const steps = [
+    { emoji: '🧭', title: 'Elegí tu ventana', text: 'Explorá los distintos estados y elegí el que más resuena con lo que estás atravesando hoy.' },
+    { emoji: '📝', title: 'Hacé un check-in breve', text: 'Un mini cuestionario de menos de un minuto ayuda a ubicar en qué momento estás.' },
+    { emoji: '🌿', title: 'Recibí tu contenido', text: 'Psicoeducación, una meditación y un ejercicio práctico, elegidos según tu momento.' },
+  ];
+  return (
+    <section id="como-funciona" className="max-w-6xl mx-auto px-6 py-20">
+      <div className="text-center max-w-2xl mx-auto mb-14">
+        <p className="uppercase tracking-widest text-xs text-sea-500 font-semibold mb-3">Cómo funciona</p>
+        <h2 className="font-serif text-3xl md:text-4xl font-semibold text-sea-900">Tres pasos, a tu propio ritmo</h2>
+      </div>
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-10">
+        {steps.map((s, i) => (
+          <div key={i} className="text-center">
+            <div className="w-16 h-16 rounded-full bg-sea-100 text-3xl flex items-center justify-center mx-auto mb-5">{s.emoji}</div>
+            <h3 className="font-serif text-xl font-semibold text-sea-900 mb-2">{s.title}</h3>
+            <p className="text-sea-600 text-sm leading-relaxed max-w-xs mx-auto">{s.text}</p>
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function PricingSection({ price, onOpenSubscribe }) {
+  return (
+    <section id="precio" className="bg-sea-900 text-white py-20">
+      <div className="max-w-lg mx-auto px-6 text-center">
+        <p className="uppercase tracking-widest text-xs text-sea-300 font-semibold mb-3">Membresía</p>
+        <h2 className="font-serif text-3xl md:text-4xl font-semibold mb-10">Una sola suscripción, todas las ventanas</h2>
+        <div className="bg-white/5 border border-white/10 rounded-3xl p-10">
+          <p className="font-serif text-5xl font-semibold mb-1">${price}<span className="text-lg font-sans text-sea-300">/mes</span></p>
+          <p className="text-xs text-sea-300 mb-8">(precio de ejemplo — se edita desde el panel de administración)</p>
+          <ul className="text-left space-y-3 text-sea-100 mb-8 max-w-xs mx-auto">
+            <li>🌊 Contenido psicoeducativo en formato de diapositivas, a tu ritmo</li>
+            <li>🌊 Meditaciones guiadas</li>
+            <li>🌊 Ejercicios prácticos en cada ventana</li>
+            <li>🌊 Nuevas ventanas sumándose con el tiempo</li>
+          </ul>
+          <button onClick={onOpenSubscribe} className="w-full bg-white text-sea-900 font-semibold px-7 py-3.5 rounded-full hover:bg-sand-100 transition-colors">
+            Suscribirme
+          </button>
+          <p className="text-xs text-sea-300 mt-4">Podés cancelar cuando quieras.</p>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function Footer({ onOpenAdmin, showAdminLink }) {
+  return (
+    <footer className="bg-sea-950 text-sea-300 py-14">
+      <div className="max-w-4xl mx-auto px-6 text-center">
+        <p className="font-serif text-2xl text-white mb-3">🌊 Estado del Mar</p>
+        <p className="text-sm leading-relaxed max-w-xl mx-auto mb-6">
+          Estado del Mar ofrece contenido psicoeducativo, filosófico y espiritual con fines orientativos. No reemplaza un tratamiento
+          ni la atención de un profesional de salud mental. Si estás atravesando una crisis o necesitás ayuda inmediata, por favor
+          contactá a un profesional o a una línea de ayuda de tu país.
+        </p>
+        {showAdminLink && <button onClick={onOpenAdmin} className="text-xs text-sea-500 underline hover:text-sea-300">Panel de administración</button>}
+        <p className="text-xs text-sea-600 mt-8">Prototipo navegable — pagos reales todavía no conectados.</p>
+      </div>
+    </footer>
+  );
+}
+
+/* ===== estado-del-mar.09-modals.js ===== */
+
+function AuthModal({ intent, onClose, onAuthed }) {
+  const [mode, setMode] = React.useState(intent === 'subscribe' ? 'signup' : 'login'); // signup | login
+  const [name, setName] = React.useState('');
+  const [email, setEmail] = React.useState('');
+  const [password, setPassword] = React.useState('');
+  const [loading, setLoading] = React.useState(false);
+  const [error, setError] = React.useState('');
+  const [needsConfirm, setNeedsConfirm] = React.useState(false);
+
+  async function handleSubmit() {
+    setError('');
+    if (!email || !password) { setError('Completá email y contraseña.'); return; }
+    setLoading(true);
+    if (mode === 'signup') {
+      const { data, error: err } = await sb.auth.signUp({
+        email, password, options: { data: { name } },
+      });
+      setLoading(false);
+      if (err) { setError(err.message); return; }
+      if (!data.session) { setNeedsConfirm(true); return; }
+      onAuthed(intent === 'subscribe');
+    } else {
+      const { error: err } = await sb.auth.signInWithPassword({ email, password });
+      setLoading(false);
+      if (err) { setError(err.message); return; }
+      onAuthed(false);
+    }
+  }
+
+  if (needsConfirm) {
+    return (
+      <Modal onClose={onClose}>
+        <div className="p-8 text-center">
+          <p className="text-4xl mb-4">📬</p>
+          <h3 className="font-serif text-2xl font-semibold text-sea-900 mb-3">Confirmá tu email</h3>
+          <p className="text-sea-600 mb-6">Te mandamos un link de confirmación a {email}. Abrilo y después volvé acá para iniciar sesión.</p>
+          <button onClick={onClose} className="w-full bg-sea-700 hover:bg-sea-800 text-white font-semibold px-7 py-3.5 rounded-full transition-colors">Entendido</button>
+        </div>
+      </Modal>
+    );
+  }
+
+  return (
+    <Modal onClose={onClose}>
+      <div className="p-8">
+        <h3 className="font-serif text-2xl font-semibold text-sea-900 mb-1">
+          {mode === 'signup' ? (intent === 'subscribe' ? 'Sumate a Estado del Mar' : 'Creá tu cuenta') : 'Iniciá sesión'}
+        </h3>
+        {mode === 'signup' && intent === 'subscribe' && (
+          <p className="text-xs text-amber-600 bg-amber-50 border border-amber-200 rounded-xl px-3 py-2 mb-6">
+            Modo demo: la suscripción se activa directamente, todavía sin pasarela de pago real.
+          </p>
+        )}
+        {mode === 'signup' && intent !== 'subscribe' && (
+          <p className="text-sea-500 text-sm mb-6">Creá tu cuenta gratis — suscribirte para desbloquear el contenido es un paso aparte, cuando quieras.</p>
+        )}
+        <div className="space-y-4 mt-2">
+          {mode === 'signup' && (
+            <div>
+              <label className="text-sm font-semibold text-sea-700 block mb-1">Nombre</label>
+              <input value={name} onChange={e => setName(e.target.value)} className="w-full border border-sea-200 rounded-xl px-4 py-2.5 focus:outline-none focus:border-sea-500" placeholder="Tu nombre" />
+            </div>
+          )}
+          <div>
+            <label className="text-sm font-semibold text-sea-700 block mb-1">Email</label>
+            <input value={email} onChange={e => setEmail(e.target.value)} type="email" className="w-full border border-sea-200 rounded-xl px-4 py-2.5 focus:outline-none focus:border-sea-500" placeholder="tu@email.com" />
+          </div>
+          <div>
+            <label className="text-sm font-semibold text-sea-700 block mb-1">Contraseña</label>
+            <input value={password} onChange={e => setPassword(e.target.value)} type="password" className="w-full border border-sea-200 rounded-xl px-4 py-2.5 focus:outline-none focus:border-sea-500" placeholder="••••••••" />
+          </div>
+        </div>
+        {error && <p className="text-sm text-red-600 mt-3">{error}</p>}
+        <button onClick={handleSubmit} disabled={loading} className="w-full bg-sea-700 hover:bg-sea-800 text-white font-semibold px-7 py-3.5 rounded-full mt-6 transition-colors disabled:opacity-50">
+          {loading ? 'Un momento…' : (mode === 'signup' ? (intent === 'subscribe' ? 'Crear cuenta y suscribirme' : 'Crear cuenta') : 'Iniciar sesión')}
+        </button>
+        <button onClick={() => { setMode(mode === 'signup' ? 'login' : 'signup'); setError(''); }} className="w-full text-sea-600 text-sm mt-4 hover:text-sea-800 underline">
+          {mode === 'signup' ? '¿Ya tenés cuenta? Iniciá sesión' : '¿No tenés cuenta? Registrate'}
+        </button>
+        <button onClick={onClose} className="w-full text-sea-500 text-sm mt-3 hover:text-sea-700">Cancelar</button>
+      </div>
+    </Modal>
+  );
+}
+
+function ProfilePanel({ email, profile, subscribed, subscribeDate, onSave, onSubscribe, onCancelSubscription, onSignOut, onExit }) {
+  const [fullName, setFullName] = React.useState((profile && profile.full_name) || '');
+  const [phone, setPhone] = React.useState((profile && profile.phone) || '');
+  const [country, setCountry] = React.useState((profile && profile.country) || '');
+  const [city, setCity] = React.useState((profile && profile.city) || '');
+  const [birthDate, setBirthDate] = React.useState((profile && profile.birth_date) || '');
+  const [motivation, setMotivation] = React.useState((profile && profile.motivation) || '');
+  const [confirming, setConfirming] = React.useState(false);
+  const [saving, setSaving] = React.useState(false);
+  const [savedMsg, setSavedMsg] = React.useState('');
+
+  async function handleSave() {
+    setSaving(true);
+    setSavedMsg('');
+    const { error } = await onSave({
+      full_name: fullName, phone, country, city,
+      birth_date: birthDate || null, motivation,
+    });
+    setSaving(false);
+    setSavedMsg(error ? ('No se pudo guardar: ' + error) : 'Guardado ✓');
+  }
+
+  return (
+    <div className="min-h-screen bg-sand-50">
+      <div className="bg-sea-900 text-white">
+        <div className="max-w-3xl mx-auto px-6 py-8 flex items-center justify-between">
+          <div>
+            <h1 className="font-serif text-3xl font-semibold">Mi perfil</h1>
+            <p className="text-sea-300 text-sm mt-1">{email}</p>
+          </div>
+          <button onClick={onExit} className="text-sea-200 hover:text-white text-sm font-semibold">Volver →</button>
+        </div>
+      </div>
+
+      <div className="max-w-3xl mx-auto px-6 py-10 space-y-8">
+        <div className="bg-white rounded-3xl border border-sea-100 p-6 md:p-8">
+          <h3 className="font-serif text-xl text-sea-900 mb-4">Suscripción</h3>
+          <div className="bg-sea-50 rounded-2xl p-5 mb-5">
+            <p className="text-sm text-sea-500">Estado</p>
+            {subscribed ? (
+              <React.Fragment>
+                <p className="text-sea-900 font-semibold mb-1">Suscripción activa</p>
+                <p className="text-sm text-sea-500">Desde el {formatDate(subscribeDate)}</p>
+              </React.Fragment>
+            ) : (
+              <p className="text-sea-900 font-semibold">Sin suscripción activa</p>
+            )}
+          </div>
+
+          {!subscribed && (
+            <button onClick={onSubscribe} className="bg-sea-700 hover:bg-sea-800 text-white font-semibold px-6 py-2.5 rounded-full transition-colors">
+              Suscribirme
+            </button>
+          )}
+          {subscribed && !confirming && (
+            <button onClick={() => setConfirming(true)} className="text-red-600 border border-red-200 hover:bg-red-50 font-semibold px-6 py-2.5 rounded-full transition-colors">
+              Cancelar suscripción
+            </button>
+          )}
+          {subscribed && confirming && (
+            <div className="space-y-3">
+              <p className="text-sm text-sea-600">¿Confirmás que querés cancelar? Vas a perder el acceso a las ventanas.</p>
+              <div className="flex flex-wrap gap-3">
+                <button onClick={onCancelSubscription} className="bg-red-600 hover:bg-red-700 text-white font-semibold px-6 py-2.5 rounded-full transition-colors">Sí, cancelar</button>
+                <button onClick={() => setConfirming(false)} className="text-sea-500 font-semibold px-6 py-2.5">Volver</button>
+              </div>
+            </div>
+          )}
+        </div>
+
+        <div className="bg-white rounded-3xl border border-sea-100 p-6 md:p-8">
+          <h3 className="font-serif text-xl text-sea-900 mb-4">Datos personales</h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="text-sm font-semibold text-sea-700 block mb-1">Nombre completo</label>
+              <input value={fullName} onChange={e => setFullName(e.target.value)} className="w-full border border-sea-200 rounded-xl px-4 py-2.5" />
+            </div>
+            <div>
+              <label className="text-sm font-semibold text-sea-700 block mb-1">Teléfono</label>
+              <input value={phone} onChange={e => setPhone(e.target.value)} className="w-full border border-sea-200 rounded-xl px-4 py-2.5" placeholder="+54 9 ..." />
+            </div>
+            <div>
+              <label className="text-sm font-semibold text-sea-700 block mb-1">País</label>
+              <input value={country} onChange={e => setCountry(e.target.value)} className="w-full border border-sea-200 rounded-xl px-4 py-2.5" placeholder="Argentina" />
+            </div>
+            <div>
+              <label className="text-sm font-semibold text-sea-700 block mb-1">Ciudad</label>
+              <input value={city} onChange={e => setCity(e.target.value)} className="w-full border border-sea-200 rounded-xl px-4 py-2.5" />
+            </div>
+            <div>
+              <label className="text-sm font-semibold text-sea-700 block mb-1">Fecha de nacimiento</label>
+              <input type="date" value={birthDate || ''} onChange={e => setBirthDate(e.target.value)} className="w-full border border-sea-200 rounded-xl px-4 py-2.5" />
+            </div>
+          </div>
+          <div className="mt-4">
+            <label className="text-sm font-semibold text-sea-700 block mb-1">¿Qué te trae a Estado del Mar?</label>
+            <textarea value={motivation} onChange={e => setMotivation(e.target.value)} rows="3" className="w-full border border-sea-200 rounded-xl px-4 py-2.5" />
+          </div>
+          <div className="flex items-center gap-4 mt-6">
+            <button onClick={handleSave} disabled={saving} className="bg-sea-700 hover:bg-sea-800 text-white font-semibold px-6 py-2.5 rounded-full transition-colors disabled:opacity-50">
+              {saving ? 'Guardando…' : 'Guardar cambios'}
+            </button>
+            {savedMsg && <span className="text-sm text-sea-600">{savedMsg}</span>}
+          </div>
+        </div>
+
+        <button onClick={onSignOut} className="text-sea-500 text-sm hover:text-sea-700 underline">Cerrar sesión</button>
+      </div>
+    </div>
+  );
+}
+
+/* ===== estado-del-mar.10-topic-detail.js ===== */
+
+function TopicDetail({ topic, subscribed, onBack, onOpenSubscribe }) {
+  const [tab, setTab] = React.useState('checkin');
+  React.useEffect(() => { window.scrollTo(0, 0); }, [topic.id]);
+
+  const tabs = [
+    { id: 'checkin', label: 'Check-in' },
+    { id: 'contenido', label: 'Contenido' },
+    { id: 'meditacion', label: 'Meditación' },
+    { id: 'ejercicio', label: 'Ejercicio' },
+  ];
+
+  return (
+    <div className="min-h-screen">
+      <div className={"bg-gradient-to-br " + topic.gradient + " text-white"}>
+        <div className="max-w-4xl mx-auto px-6 pt-10 pb-16">
+          <button onClick={onBack} className="text-white/80 hover:text-white text-sm font-semibold mb-8">← Volver a las ventanas</button>
+          <div className="flex items-center gap-5">
+            <div className="w-20 h-20 rounded-full bg-white/15 flex items-center justify-center text-4xl border-2 border-white/30">{topic.emoji}</div>
+            <div>
+              <h1 className="font-serif text-3xl md:text-4xl font-semibold">{topic.title}</h1>
+              <p className="text-white/80 mt-1 max-w-lg">{topic.description}</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {!subscribed ? (
+        <div className="max-w-2xl mx-auto px-6 py-20 text-center">
+          <p className="text-5xl mb-6">🔒</p>
+          <h2 className="font-serif text-2xl md:text-3xl text-sea-900 mb-3">Este contenido es para suscriptores</h2>
+          <p className="text-sea-600 mb-8">Sumate a Estado del Mar para acceder al check-in, la psicoeducación, la meditación y el ejercicio práctico de esta ventana — y de todas las demás.</p>
+          <button onClick={onOpenSubscribe} className="bg-sea-700 hover:bg-sea-800 text-white font-semibold px-8 py-3.5 rounded-full transition-colors">
+            Suscribirme
+          </button>
+        </div>
+      ) : (
+        <div className="max-w-4xl mx-auto px-6 py-12">
+          <div className="flex flex-wrap justify-center gap-2 mb-10">
+            {tabs.map(t => (
+              <button key={t.id} onClick={() => setTab(t.id)}
+                className={"px-5 py-2.5 rounded-full text-sm font-semibold transition-colors " + (tab === t.id ? "bg-sea-700 text-white" : "bg-sea-50 text-sea-600 hover:bg-sea-100")}>
+                {t.label}
+              </button>
+            ))}
+          </div>
+          {tab === 'checkin' && <DiagnosticQuiz key={topic.id + '-quiz'} topic={topic} />}
+          {tab === 'contenido' && <SlideViewer slides={topic.slides} />}
+          {tab === 'meditacion' && <MeditationPlayer meditation={topic.meditation} />}
+          {tab === 'ejercicio' && <ExerciseChecklist exercise={topic.exercise} />}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ===== estado-del-mar.11-admin-panel.js ===== */
+
+function TopicEditForm({ topic, onSave, onCancel }) {
+  const isNew = !topic;
+  const [title, setTitle] = React.useState(topic ? topic.title : '');
+  const [emoji, setEmoji] = React.useState(topic ? topic.emoji : EMOJI_PRESETS[0]);
+  const [gradient, setGradient] = React.useState(topic ? topic.gradient : GRADIENT_PRESETS[0]);
+  const [description, setDescription] = React.useState(topic ? topic.description : '');
+  const [slidesText, setSlidesText] = React.useState(
+    topic ? topic.slides.map(s => s.title + ' :: ' + s.text).join('\n') : ''
+  );
+  const [medTitle, setMedTitle] = React.useState(topic ? topic.meditation.title : '');
+  const [medDuration, setMedDuration] = React.useState(topic ? topic.meditation.duration : '6 min');
+  const [medDescription, setMedDescription] = React.useState(topic ? topic.meditation.description : '');
+  const [exerciseTitle, setExerciseTitle] = React.useState(topic ? topic.exercise.title : '');
+  const [stepsText, setStepsText] = React.useState(topic ? topic.exercise.steps.join('\n') : '');
+
+  function handleSave() {
+    const slides = slidesText.split('\n').map(l => l.trim()).filter(Boolean).map(line => {
+      const [t, ...rest] = line.split('::');
+      return { title: (t || '').trim(), text: rest.join('::').trim() || (t || '').trim() };
+    });
+    const steps = stepsText.split('\n').map(l => l.trim()).filter(Boolean);
+
+    const base = topic || { id: slugify(title), questions: makeDefaultQuiz(title || 'este tema'), levels: makeDefaultLevels() };
+
+    const updated = {
+      ...base,
+      title, emoji, gradient, description,
+      slides: slides.length ? slides : (base.slides || []),
+      meditation: { title: medTitle, duration: medDuration, description: medDescription },
+      exercise: { title: exerciseTitle, steps: steps.length ? steps : (base.exercise ? base.exercise.steps : []) },
+    };
+    onSave(updated);
+  }
+
+  return (
+    <div className="bg-white rounded-3xl border border-sea-100 p-6 md:p-8 space-y-5">
+      <h3 className="font-serif text-2xl text-sea-900">{isNew ? 'Nueva ventana' : 'Editar ventana: ' + topic.title}</h3>
+      {isNew && (
+        <p className="text-xs text-amber-600 bg-amber-50 border border-amber-200 rounded-xl px-3 py-2">
+          Las ventanas nuevas arrancan con un check-in genérico de 4 preguntas, que después se puede personalizar.
+        </p>
+      )}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div>
+          <label className="text-sm font-semibold text-sea-700 block mb-1">Título</label>
+          <input value={title} onChange={e => setTitle(e.target.value)} className="w-full border border-sea-200 rounded-xl px-4 py-2.5" placeholder="Ej: Autoestima" />
+        </div>
+        <div>
+          <label className="text-sm font-semibold text-sea-700 block mb-1">Ícono (emoji)</label>
+          <select value={emoji} onChange={e => setEmoji(e.target.value)} className="w-full border border-sea-200 rounded-xl px-4 py-2.5">
+            {EMOJI_PRESETS.map(em => <option key={em} value={em}>{em}</option>)}
+          </select>
+        </div>
+      </div>
+      <div>
+        <label className="text-sm font-semibold text-sea-700 block mb-1">Color</label>
+        <div className="flex flex-wrap gap-2">
+          {GRADIENT_PRESETS.map(g => (
+            <button key={g} onClick={() => setGradient(g)}
+              className={"w-10 h-10 rounded-full bg-gradient-to-br " + g + " border-2 " + (gradient === g ? "border-sea-900" : "border-white")}>
+            </button>
+          ))}
+        </div>
+      </div>
+      <div>
+        <label className="text-sm font-semibold text-sea-700 block mb-1">Descripción corta</label>
+        <textarea value={description} onChange={e => setDescription(e.target.value)} rows="2" className="w-full border border-sea-200 rounded-xl px-4 py-2.5" />
+      </div>
+      <div>
+        <label className="text-sm font-semibold text-sea-700 block mb-1">Diapositivas de contenido (una por línea, formato "Título :: Texto")</label>
+        <textarea value={slidesText} onChange={e => setSlidesText(e.target.value)} rows="5" className="w-full border border-sea-200 rounded-xl px-4 py-2.5 font-mono text-xs" />
+      </div>
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div>
+          <label className="text-sm font-semibold text-sea-700 block mb-1">Título meditación</label>
+          <input value={medTitle} onChange={e => setMedTitle(e.target.value)} className="w-full border border-sea-200 rounded-xl px-4 py-2.5" />
+        </div>
+        <div>
+          <label className="text-sm font-semibold text-sea-700 block mb-1">Duración</label>
+          <input value={medDuration} onChange={e => setMedDuration(e.target.value)} className="w-full border border-sea-200 rounded-xl px-4 py-2.5" placeholder="6 min" />
+        </div>
+        <div>
+          <label className="text-sm font-semibold text-sea-700 block mb-1">Descripción meditación</label>
+          <input value={medDescription} onChange={e => setMedDescription(e.target.value)} className="w-full border border-sea-200 rounded-xl px-4 py-2.5" />
+        </div>
+      </div>
+      <div>
+        <label className="text-sm font-semibold text-sea-700 block mb-1">Título del ejercicio</label>
+        <input value={exerciseTitle} onChange={e => setExerciseTitle(e.target.value)} className="w-full border border-sea-200 rounded-xl px-4 py-2.5" />
+      </div>
+      <div>
+        <label className="text-sm font-semibold text-sea-700 block mb-1">Pasos del ejercicio (uno por línea)</label>
+        <textarea value={stepsText} onChange={e => setStepsText(e.target.value)} rows="4" className="w-full border border-sea-200 rounded-xl px-4 py-2.5" />
+      </div>
+      <div className="flex gap-3 pt-2">
+        <button onClick={handleSave} className="bg-sea-700 hover:bg-sea-800 text-white font-semibold px-6 py-2.5 rounded-full transition-colors">Guardar</button>
+        <button onClick={onCancel} className="text-sea-500 hover:text-sea-700 font-semibold px-6 py-2.5">Cancelar</button>
+      </div>
+    </div>
+  );
+}
+
+function AdminPanel({ topics, price, setPrice, onExit, onSaveTopic, onDeleteTopic, onSeedInitial }) {
+  const [editingId, setEditingId] = React.useState(null);
+  const [creating, setCreating] = React.useState(false);
+  const [saving, setSaving] = React.useState(false);
+  const [seeding, setSeeding] = React.useState(false);
+
+  async function saveTopic(updated) {
+    setSaving(true);
+    await onSaveTopic(updated);
+    setSaving(false);
+    setEditingId(null);
+    setCreating(false);
+  }
+
+  async function deleteTopic(id) {
+    if (confirm('¿Eliminar esta ventana? Esta acción no se puede deshacer.')) {
+      await onDeleteTopic(id);
+    }
+  }
+
+  async function seedInitial() {
+    setSeeding(true);
+    await onSeedInitial();
+    setSeeding(false);
+  }
+
+  const editingTopic = topics.find(t => t.id === editingId);
+
+  return (
+    <div className="min-h-screen bg-sand-50">
+      <div className="bg-sea-900 text-white">
+        <div className="max-w-5xl mx-auto px-6 py-8 flex items-center justify-between">
+          <div>
+            <h1 className="font-serif text-3xl font-semibold">Panel de administración</h1>
+            <p className="text-sea-300 text-sm mt-1">Modo demo — los cambios se guardan solo en esta sesión del navegador.</p>
+          </div>
+          <button onClick={onExit} className="text-sea-200 hover:text-white text-sm font-semibold">Salir →</button>
+        </div>
+      </div>
+
+      <div className="max-w-5xl mx-auto px-6 py-10 space-y-10">
+        <div className="bg-white rounded-3xl border border-sea-100 p-6 md:p-8">
+          <h3 className="font-serif text-xl text-sea-900 mb-4">Configuración general</h3>
+          <label className="text-sm font-semibold text-sea-700 block mb-1">Precio de la suscripción mensual</label>
+          <div className="flex items-center gap-2 max-w-xs">
+            <span className="text-sea-500">$</span>
+            <input value={price} onChange={e => setPrice(e.target.value)} className="w-full border border-sea-200 rounded-xl px-4 py-2.5" />
+            <span className="text-sea-500">/mes</span>
+          </div>
+          <div className="mt-6 pt-6 border-t border-sea-100">
+            <button onClick={seedInitial} disabled={seeding} className="text-sm text-sea-600 underline hover:text-sea-800 disabled:opacity-50">
+              {seeding ? 'Cargando…' : 'Cargar las 10 ventanas iniciales en la base (una sola vez)'}
+            </button>
+          </div>
+        </div>
+
+        {(creating || editingTopic) ? (
+          <TopicEditForm
+            topic={editingTopic || null}
+            onSave={saveTopic}
+            onCancel={() => { setEditingId(null); setCreating(false); }}
+          />
+        ) : (
+          <div>
+            <div className="flex items-center justify-between mb-5">
+              <h3 className="font-serif text-xl text-sea-900">Ventanas ({topics.length})</h3>
+              <button onClick={() => setCreating(true)} className="bg-sea-700 hover:bg-sea-800 text-white font-semibold px-5 py-2.5 rounded-full text-sm transition-colors">
+                + Agregar ventana
+              </button>
+            </div>
+            <div className="space-y-3">
+              {topics.map(t => (
+                <div key={t.id} className="bg-white rounded-2xl border border-sea-100 p-4 flex items-center gap-4">
+                  <div className={"w-12 h-12 rounded-full bg-gradient-to-br " + t.gradient + " flex items-center justify-center text-xl flex-shrink-0"}>{t.emoji}</div>
+                  <div className="flex-1 min-w-0">
+                    <p className="font-semibold text-sea-900">{t.title}</p>
+                    <p className="text-sea-500 text-sm truncate">{t.description}</p>
+                  </div>
+                  <button onClick={() => setEditingId(t.id)} className="text-sea-600 hover:text-sea-900 text-sm font-semibold px-3 py-1.5">Editar</button>
+                  <button onClick={() => deleteTopic(t.id)} className="text-red-500 hover:text-red-700 text-sm font-semibold px-3 py-1.5">Eliminar</button>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+/* ===== estado-del-mar.12-app-root.js ===== */
+
+function App() {
+  const [topics, setTopics] = React.useState(INITIAL_TOPICS);
+  const [view, setView] = React.useState('home'); // home | detail | admin | profile
+  const [activeTopicId, setActiveTopicId] = React.useState(null);
+  const [session, setSession] = React.useState(null);
+  const [authChecked, setAuthChecked] = React.useState(false);
+  const [profile, setProfile] = React.useState(null);
+  const [price, setPrice] = React.useState('9.990');
+  const [showAuthModal, setShowAuthModal] = React.useState(false);
+  const [authIntent, setAuthIntent] = React.useState('account'); // 'account' | 'subscribe'
+  const [pendingScroll, setPendingScroll] = React.useState(null);
+
+  React.useEffect(() => {
+    sb.auth.getSession().then(({ data }) => {
+      setSession(data.session);
+      setAuthChecked(true);
+    });
+    const { data: listener } = sb.auth.onAuthStateChange((_event, newSession) => {
+      setSession(newSession);
+    });
+    return () => listener.subscription.unsubscribe();
+  }, []);
+
+  React.useEffect(() => {
+    const userId = session && session.user ? session.user.id : null;
+    if (!userId) { setProfile(null); return; }
+    sb.from('profiles').select('*').eq('id', userId).single().then(({ data, error }) => {
+      if (!error) setProfile(data);
+    });
+  }, [session]);
+
+  React.useEffect(() => {
+    sb.from('topics').select('*').order('created_at', { ascending: true }).then(({ data, error }) => {
+      if (!error && data && data.length > 0) setTopics(data);
+    });
+  }, []);
+
+  React.useEffect(() => {
+    if (view === 'home' && pendingScroll) {
+      const el = document.getElementById(pendingScroll);
+      if (el) el.scrollIntoView({ behavior: 'smooth' });
+      setPendingScroll(null);
+    }
+  }, [view, pendingScroll]);
+
+  function goHome() { setView('home'); setActiveTopicId(null); window.scrollTo(0,0); }
+  function selectTopic(id) { setActiveTopicId(id); setView('detail'); }
+  function goToSection(sectionId) {
+    if (view === 'home') {
+      const el = document.getElementById(sectionId);
+      if (el) el.scrollIntoView({ behavior: 'smooth' });
+    } else {
+      setActiveTopicId(null);
+      setPendingScroll(sectionId);
+      setView('home');
+    }
+  }
+
+  async function markSubscribedForUser(userId) {
+    const { error } = await sb.from('profiles').update({ subscribed: true, subscribed_at: new Date().toISOString() }).eq('id', userId);
+    if (!error) setProfile(p => ({ ...(p || { id: userId }), subscribed: true, subscribed_at: new Date().toISOString() }));
+  }
+
+  async function markSubscribed() {
+    if (session && session.user) await markSubscribedForUser(session.user.id);
+  }
+
+  async function cancelSubscription() {
+    if (!session || !session.user) return;
+    const { error } = await sb.from('profiles').update({ subscribed: false }).eq('id', session.user.id);
+    if (!error) setProfile(p => ({ ...(p || {}), subscribed: false }));
+  }
+
+  async function signOutUser() {
+    await sb.auth.signOut();
+    goHome();
+  }
+
+  async function saveProfileFields(fields) {
+    if (!session || !session.user) return { error: 'No hay sesión activa.' };
+    const { error } = await sb.from('profiles').update(fields).eq('id', session.user.id);
+    if (!error) setProfile(p => ({ ...(p || {}), ...fields }));
+    return { error: error ? error.message : null };
+  }
+
+  function openSubscribeFlow() {
+    if (session && session.user) {
+      markSubscribed();
+    } else {
+      setAuthIntent('subscribe');
+      setShowAuthModal(true);
+    }
+  }
+
+  function openAuthFlow() {
+    setAuthIntent('account');
+    setShowAuthModal(true);
+  }
+
+  async function handleAuthed(shouldSubscribe) {
+    setShowAuthModal(false);
+    if (!shouldSubscribe) return;
+    const { data } = await sb.auth.getSession();
+    if (data.session) await markSubscribedForUser(data.session.user.id);
+  }
+
+  async function saveTopicToDb(updated) {
+    const { error } = await sb.from('topics').upsert(updated);
+    if (error) { alert('No se pudo guardar: ' + error.message); return; }
+    setTopics(prev => {
+      const exists = prev.some(t => t.id === updated.id);
+      return exists ? prev.map(t => t.id === updated.id ? updated : t) : [...prev, updated];
+    });
+  }
+
+  async function deleteTopicFromDb(id) {
+    const { error } = await sb.from('topics').delete().eq('id', id);
+    if (error) { alert('No se pudo eliminar: ' + error.message); return; }
+    setTopics(prev => prev.filter(t => t.id !== id));
+  }
+
+  async function seedInitialTopics() {
+    const { error } = await sb.from('topics').upsert(INITIAL_TOPICS);
+    if (error) { alert('No se pudo cargar el contenido inicial: ' + error.message); return; }
+    const { data } = await sb.from('topics').select('*').order('created_at', { ascending: true });
+    if (data) setTopics(data);
+  }
+
+  if (!authChecked) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-sand-50">
+        <p className="text-sea-400 text-sm">Cargando…</p>
+      </div>
+    );
+  }
+
+  const loggedIn = !!(session && session.user);
+  const subscribed = !!(profile && profile.subscribed);
+  const isAdmin = !!(profile && profile.is_admin);
+
+  if (view === 'admin') {
+    if (!isAdmin) {
+      return (
+        <div className="min-h-screen flex items-center justify-center bg-sand-50 px-6 text-center">
+          <div>
+            <p className="text-4xl mb-4">🔒</p>
+            <p className="text-sea-700 mb-4">No tenés acceso al panel de administración.</p>
+            <button onClick={goHome} className="text-sea-600 underline">Volver</button>
+          </div>
+        </div>
+      );
+    }
+    return <AdminPanel topics={topics} price={price} setPrice={setPrice} onExit={goHome} onSaveTopic={saveTopicToDb} onDeleteTopic={deleteTopicFromDb} onSeedInitial={seedInitialTopics} />;
+  }
+
+  if (view === 'profile') {
+    if (!loggedIn) { goHome(); return null; }
+    return (
+      <ProfilePanel
+        email={session.user.email}
+        profile={profile}
+        subscribed={subscribed}
+        subscribeDate={profile ? profile.subscribed_at : null}
+        onSave={saveProfileFields}
+        onSubscribe={markSubscribed}
+        onCancelSubscription={cancelSubscription}
+        onSignOut={signOutUser}
+        onExit={goHome}
+      />
+    );
+  }
+
+  if (view === 'detail') {
+    const topic = topics.find(t => t.id === activeTopicId);
+    if (!topic) { goHome(); return null; }
+    return (
+      <div>
+        <Header loggedIn={loggedIn} onNav={goHome} onNavigateSection={goToSection} onOpenAuth={openAuthFlow} onOpenAccount={() => setView('profile')} />
+        <TopicDetail topic={topic} subscribed={subscribed} onBack={goHome} onOpenSubscribe={openSubscribeFlow} />
+        <Footer onOpenAdmin={() => setView('admin')} showAdminLink={isAdmin} />
+        {showAuthModal && <AuthModal intent={authIntent} onClose={() => setShowAuthModal(false)} onAuthed={handleAuthed} />}
+      </div>
+    );
+  }
+
+  return (
+    <div>
+      <Header loggedIn={loggedIn} onNav={goHome} onNavigateSection={goToSection} onOpenAuth={openAuthFlow} onOpenAccount={() => setView('profile')} />
+      <Hero onOpenSubscribe={openSubscribeFlow} />
+      <TopicsGrid topics={topics} subscribed={subscribed} onSelect={selectTopic} />
+      <HowItWorks />
+      <PricingSection price={price} onOpenSubscribe={openSubscribeFlow} />
+      <Footer onOpenAdmin={() => setView('admin')} showAdminLink={isAdmin} />
+      {showAuthModal && <AuthModal intent={authIntent} onClose={() => setShowAuthModal(false)} onAuthed={handleAuthed} />}
+    </div>
+  );
+}
+
+const root = ReactDOM.createRoot(document.getElementById('root'));
+root.render(<App />);
+</script>
+</body>
+</html>
