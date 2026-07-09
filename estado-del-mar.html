@@ -141,10 +141,37 @@
   .btn-link::after { content: ""; position: absolute; left: 0; bottom: -2px; width: 100%; height: 1.5px; background: currentColor; transform: scaleX(0); transform-origin: left; transition: transform .3s cubic-bezier(.22,.61,.36,1); }
   .btn-link:hover::after { transform: scaleX(1); }
 
+  /* ===== Navbar animado ===== */
+  .nav-link {
+    position: relative;
+    padding: .45rem .8rem;
+    border-radius: 9999px;
+    transition: color .25s ease, background-color .25s ease, transform .25s ease;
+  }
+  .nav-link::after {
+    content: "";
+    position: absolute;
+    left: 50%; right: 50%; bottom: .2rem;
+    height: 2px;
+    border-radius: 2px;
+    background: linear-gradient(90deg, #77bcb0, #3f8379);
+    transition: left .28s cubic-bezier(.22,.61,.36,1), right .28s cubic-bezier(.22,.61,.36,1);
+  }
+  .nav-link:hover { background: rgba(196,231,225,.45); transform: translateY(-1px); }
+  .nav-link:hover::after { left: .8rem; right: .8rem; }
+  .nav-link-active { color: #3f8379; }
+  .nav-link-active::after { left: .8rem; right: .8rem; }
+
+  .nav-enter { opacity: 0; transform: translateY(-8px); animation: navdrop .5s cubic-bezier(.22,.61,.36,1) forwards; }
+  @keyframes navdrop { to { opacity: 1; transform: none; } }
+
+  .logo-wave { display: inline-block; transition: transform .4s cubic-bezier(.34,1.56,.64,1); }
+  .logo-link:hover .logo-wave { transform: rotate(-12deg) scale(1.15); }
+
   /* Respeto por quienes prefieren menos movimiento */
   @media (prefers-reduced-motion: reduce) {
-    .btn, .btn::before, .reveal { transition: none !important; }
-    .animate-drift, .animate-floaty, .animate-aurora, .animate-breathe { animation: none !important; }
+    .btn, .btn::before, .reveal, .nav-link, .nav-link::after, .logo-wave { transition: none !important; }
+    .animate-drift, .animate-floaty, .animate-aurora, .animate-breathe, .nav-enter { animation: none !important; opacity: 1 !important; transform: none !important; }
   }
 </style>
 </head>
@@ -784,6 +811,14 @@ function TopicsGrid({ topics, subscribed, onSelect }) {
 
 function Header({ loggedIn, onNav, onNavigateSection, onOpenPage, onOpenAuth, onOpenRegister, onOpenAccount, onOpenSubscribe }) {
   const [mobileOpen, setMobileOpen] = React.useState(false);
+  const [scrolled, setScrolled] = React.useState(false);
+
+  React.useEffect(() => {
+    const onScroll = () => setScrolled(window.scrollY > 8);
+    window.addEventListener('scroll', onScroll, { passive: true });
+    onScroll();
+    return () => window.removeEventListener('scroll', onScroll);
+  }, []);
 
   const sectionItems = [
     { id: 'ventanas', label: 'Ventanas' },
@@ -795,6 +830,7 @@ function Header({ loggedIn, onNav, onNavigateSection, onOpenPage, onOpenAuth, on
     { id: 'faq', label: 'FAQ' },
     { id: 'contacto', label: 'Contacto' },
   ];
+  const allItems = [...sectionItems.map(i => ({ ...i, kind: 'section' })), ...pageItems.map(i => ({ ...i, kind: 'page' }))];
 
   function handleSection(sectionId) {
     setMobileOpen(false);
@@ -806,17 +842,20 @@ function Header({ loggedIn, onNav, onNavigateSection, onOpenPage, onOpenAuth, on
   }
 
   return (
-    <header className="sticky top-0 z-40 bg-white/80 backdrop-blur-md border-b border-mist-100 text-sea-800">
-      <div className="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between">
-        <button onClick={() => onNav('home')} className="flex items-center gap-2 font-serif text-xl font-semibold text-sea-900 hover:text-mist-600 transition-colors">
-          <span className="inline-block animate-drift">🌊</span> Estado del Mar
+    <header className={"sticky top-0 z-40 backdrop-blur-md transition-all duration-300 text-sea-800 " + (scrolled ? "bg-white/90 shadow-lg shadow-mist-100/70 border-b border-mist-100" : "bg-white/70 border-b border-transparent")}>
+      <div className={"max-w-6xl mx-auto px-6 flex items-center justify-between transition-all duration-300 " + (scrolled ? "h-14" : "h-16")}>
+        <button onClick={() => onNav('home')} className="logo-link flex items-center gap-2 font-serif text-xl font-semibold text-sea-900 hover:text-mist-600 transition-colors">
+          <span className="logo-wave animate-drift">🌊</span> Estado del Mar
         </button>
-        <nav className="hidden md:flex items-center gap-6 text-sm font-semibold text-sea-600">
-          {sectionItems.map(item => (
-            <button key={item.id} onClick={() => handleSection(item.id)} className="btn-link hover:text-sea-900">{item.label}</button>
-          ))}
-          {pageItems.map(item => (
-            <button key={item.id} onClick={() => handlePage(item.id)} className="btn-link hover:text-sea-900">{item.label}</button>
+        <nav className="hidden md:flex items-center gap-1 text-sm font-semibold text-sea-600">
+          {allItems.map((item, idx) => (
+            <button
+              key={item.id}
+              onClick={() => item.kind === 'section' ? handleSection(item.id) : handlePage(item.id)}
+              className="nav-link nav-enter hover:text-sea-900"
+              style={{ animationDelay: (idx * 60) + 'ms' }}>
+              {item.label}
+            </button>
           ))}
         </nav>
         <div className="flex items-center gap-2">
@@ -824,10 +863,10 @@ function Header({ loggedIn, onNav, onNavigateSection, onOpenPage, onOpenAuth, on
             <button onClick={onOpenAccount} className="btn btn-soft btn-sm">Mi cuenta</button>
           ) : (
             <React.Fragment>
-              <button onClick={onOpenAuth} className="hidden sm:inline-flex text-sm font-semibold text-sea-600 hover:text-sea-900 px-2 transition-colors">
+              <button onClick={onOpenAuth} className="hidden sm:inline-flex btn btn-ghost btn-sm">
                 Ingresar
               </button>
-              <button onClick={onOpenRegister} className="btn btn-ghost btn-sm">
+              <button onClick={onOpenRegister} className="btn btn-soft btn-sm">
                 Registrarse
               </button>
             </React.Fragment>
@@ -835,21 +874,24 @@ function Header({ loggedIn, onNav, onNavigateSection, onOpenPage, onOpenAuth, on
           <button onClick={onOpenSubscribe} className="hidden sm:inline-flex btn btn-coral btn-sm">
             Suscribirme
           </button>
-          <button onClick={() => setMobileOpen(o => !o)} className="md:hidden w-9 h-9 flex items-center justify-center text-xl text-sea-700" aria-label="Abrir menú">
-            {mobileOpen ? '✕' : '☰'}
+          <button onClick={() => setMobileOpen(o => !o)} className="md:hidden w-9 h-9 flex items-center justify-center text-xl text-sea-700 hover:bg-mist-100 rounded-full transition-colors" aria-label="Abrir menú">
+            <span className={"inline-block transition-transform duration-300 " + (mobileOpen ? "rotate-90" : "")}>{mobileOpen ? '✕' : '☰'}</span>
           </button>
         </div>
       </div>
       {mobileOpen && (
-        <nav className="md:hidden border-t border-mist-100 bg-white px-6 py-3 flex flex-col gap-1">
-          {sectionItems.map(item => (
-            <button key={item.id} onClick={() => handleSection(item.id)} className="text-left text-sea-700 font-semibold py-2">{item.label}</button>
-          ))}
-          {pageItems.map(item => (
-            <button key={item.id} onClick={() => handlePage(item.id)} className="text-left text-sea-700 font-semibold py-2">{item.label}</button>
+        <nav className="md:hidden border-t border-mist-100 bg-white px-6 py-3 flex flex-col gap-1 animate-fadein">
+          {allItems.map((item, idx) => (
+            <button
+              key={item.id}
+              onClick={() => item.kind === 'section' ? handleSection(item.id) : handlePage(item.id)}
+              className="nav-enter text-left text-sea-700 font-semibold py-2 px-3 rounded-xl hover:bg-mist-50 transition-colors"
+              style={{ animationDelay: (idx * 45) + 'ms' }}>
+              {item.label}
+            </button>
           ))}
           {!loggedIn && (
-            <button onClick={() => { setMobileOpen(false); onOpenAuth(); }} className="text-left text-sea-700 font-semibold py-2">Ingresar</button>
+            <button onClick={() => { setMobileOpen(false); onOpenAuth(); }} className="text-left text-sea-700 font-semibold py-2 px-3 rounded-xl hover:bg-mist-50 transition-colors">Ingresar</button>
           )}
         </nav>
       )}
