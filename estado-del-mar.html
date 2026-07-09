@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>Estado del Mar — Ventanas a tu mundo interior</title>
 <meta name="description" content="Un espacio de contenido psicoeducativo, filosófico y espiritual organizado en ventanas temáticas." />
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%8C%8A%3C/text%3E%3C/svg%3E" />
+<link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%2048%2048'%3E%3Cdefs%3E%3ClinearGradient%20id='s'%20x1='0'%20y1='0'%20x2='1'%20y2='1'%3E%3Cstop%20offset='0'%20stop-color='%238ecabf'/%3E%3Cstop%20offset='1'%20stop-color='%23356a63'/%3E%3C/linearGradient%3E%3C/defs%3E%3Ccircle%20cx='24'%20cy='24'%20r='23'%20fill='%23e4f3f0'/%3E%3CclipPath%20id='c'%3E%3Ccircle%20cx='24'%20cy='24'%20r='23'/%3E%3C/clipPath%3E%3Cg%20clip-path='url(%23c)'%3E%3Ccircle%20cx='31'%20cy='16'%20r='6'%20fill='%23f77e5c'/%3E%3Cpath%20d='M-4%2030C7%2023%2015%2023%2024%2028C33%2033%2041%2026%2052%2030L52%2052-4%2052Z'%20fill='url(%23s)'/%3E%3C/g%3E%3C/svg%3E" />
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=Nunito+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
@@ -167,6 +167,19 @@
 
   .logo-wave { display: inline-block; transition: transform .4s cubic-bezier(.34,1.56,.64,1); }
   .logo-link:hover .logo-wave { transform: rotate(-12deg) scale(1.15); }
+
+  /* Emblema de marca */
+  .logo-emblem { transition: transform .45s cubic-bezier(.34,1.56,.64,1); transform-origin: center; flex-shrink: 0; }
+  .logo-link:hover .logo-emblem { transform: rotate(-8deg) scale(1.08); }
+  .logo-emblem .lm-sun { transition: transform .5s cubic-bezier(.34,1.56,.64,1); transform-origin: 31px 16px; }
+  .logo-link:hover .lm-sun { transform: translateY(-2.5px) scale(1.1); }
+  .logo-emblem .lm-wave1 { transition: transform .6s ease; }
+  .logo-emblem .lm-wave2 { transition: transform .7s ease; }
+  .logo-link:hover .lm-wave1 { transform: translateX(-3px); }
+  .logo-link:hover .lm-wave2 { transform: translateX(3px); }
+  @media (prefers-reduced-motion: reduce) {
+    .logo-emblem, .lm-sun, .lm-wave1, .lm-wave2 { transition: none !important; }
+  }
 
   /* Respeto por quienes prefieren menos movimiento */
   @media (prefers-reduced-motion: reduce) {
@@ -607,6 +620,53 @@ function Reveal({ children, className }) {
   );
 }
 
+// Emblema de marca: sol coral sobre un mar en capas (paleta de la marca)
+function LogoMark({ size }) {
+  const s = size || 42;
+  const uid = React.useMemo(() => 'lm' + Math.random().toString(36).slice(2, 7), []);
+  return (
+    <svg className="logo-emblem" width={s} height={s} viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+      <defs>
+        <linearGradient id={uid + 'sky'} x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stopColor="#f0faf7" />
+          <stop offset="1" stopColor="#d7efe9" />
+        </linearGradient>
+        <linearGradient id={uid + 'sea'} x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0" stopColor="#8ecabf" />
+          <stop offset="1" stopColor="#356a63" />
+        </linearGradient>
+        <linearGradient id={uid + 'sun'} x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0" stopColor="#ffd3c2" />
+          <stop offset="1" stopColor="#f77e5c" />
+        </linearGradient>
+        <clipPath id={uid + 'clip'}><circle cx="24" cy="24" r="22" /></clipPath>
+      </defs>
+      <g clipPath={"url(#" + uid + "clip)"}>
+        <rect width="48" height="48" fill={"url(#" + uid + "sky)"} />
+        <circle className="lm-sun" cx="31" cy="16" r="5.5" fill={"url(#" + uid + "sun)"} />
+        <path className="lm-wave1" d="M-4 31 C 7 24, 15 24, 24 29 C 33 34, 41 27, 52 31 L52 52 L-4 52 Z" fill={"url(#" + uid + "sea)"} />
+        <path className="lm-wave2" d="M-4 36 C 7 30, 15 30, 24 35 C 33 40, 41 33, 52 37 L52 52 L-4 52 Z" fill="#ffffff" opacity="0.35" />
+      </g>
+      <circle cx="24" cy="24" r="22" fill="none" stroke="#ffffff" strokeWidth="2.5" />
+      <circle cx="24" cy="24" r="23.2" fill="none" stroke="#c8e7e1" strokeWidth="1" />
+    </svg>
+  );
+}
+
+function Logo({ size, tagline, wordClass }) {
+  return (
+    <span className="flex items-center gap-2.5">
+      <LogoMark size={size} />
+      <span className="flex flex-col leading-none">
+        <span className={"font-serif font-semibold tracking-tight " + (wordClass || "text-xl text-sea-900")}>Estado del Mar</span>
+        {tagline !== false && (
+          <span className="hidden sm:block text-[9px] uppercase tracking-[0.22em] text-mist-500 font-sans font-bold mt-1">Ventanas interiores</span>
+        )}
+      </span>
+    </span>
+  );
+}
+
 /* ===== estado-del-mar.03-diagnostic-quiz.js ===== */
 
 function DiagnosticQuiz({ topic, onComplete }) {
@@ -844,8 +904,8 @@ function Header({ loggedIn, onNav, onNavigateSection, onOpenPage, onOpenAuth, on
   return (
     <header className={"sticky top-0 z-40 backdrop-blur-md transition-all duration-300 text-sea-800 " + (scrolled ? "bg-white/90 shadow-lg shadow-mist-100/70 border-b border-mist-100" : "bg-white/70 border-b border-transparent")}>
       <div className={"max-w-6xl mx-auto px-6 flex items-center justify-between transition-all duration-300 " + (scrolled ? "h-14" : "h-16")}>
-        <button onClick={() => onNav('home')} className="logo-link flex items-center gap-2 font-serif text-xl font-semibold text-sea-900 hover:text-mist-600 transition-colors">
-          <span className="logo-wave animate-drift">🌊</span> Estado del Mar
+        <button onClick={() => onNav('home')} className="logo-link" aria-label="Estado del Mar — inicio">
+          <Logo size={scrolled ? 36 : 42} />
         </button>
         <nav className="hidden md:flex items-center gap-1 text-sm font-semibold text-sea-600">
           {allItems.map((item, idx) => (
@@ -1018,7 +1078,9 @@ function Footer({ onOpenAdmin, showAdminLink, onOpenPage }) {
   return (
     <footer className="bg-mist-100 text-sea-600 py-16 border-t border-mist-200">
       <div className="max-w-4xl mx-auto px-6 text-center">
-        <p className="font-serif text-2xl text-sea-900 mb-5">🌊 Estado del Mar</p>
+        <div className="flex justify-center mb-5">
+          <Logo size={44} tagline={false} wordClass="text-2xl text-sea-900" />
+        </div>
         <nav className="flex flex-wrap justify-center gap-x-8 gap-y-2 text-sm font-semibold mb-8">
           <button onClick={() => onOpenPage('sobre')} className="btn-link hover:text-sea-900">Sobre el proyecto</button>
           <button onClick={() => onOpenPage('faq')} className="btn-link hover:text-sea-900">Preguntas frecuentes</button>
