@@ -27,14 +27,21 @@
           sand: {
             50: '#fdfaf4', 100: '#f7efdd', 200: '#efdcb8', 300: '#e4c690', 400: '#d7ab68',
           },
+          coral: {
+            50: '#fff3ef', 100: '#ffe0d6', 200: '#ffc0ad', 300: '#ff9a7d', 400: '#ff7a59', 500: '#f95d38', 600: '#e64525', 700: '#c1361d',
+          },
         },
         keyframes: {
           drift: { '0%,100%': { transform: 'translateY(0px)' }, '50%': { transform: 'translateY(-8px)' } },
           fadein: { '0%': { opacity: 0, transform: 'translateY(6px)' }, '100%': { opacity: 1, transform: 'translateY(0)' } },
+          floaty: { '0%,100%': { transform: 'translateY(0) rotate(0deg)' }, '50%': { transform: 'translateY(-18px) rotate(3deg)' } },
+          aurora: { '0%,100%': { transform: 'translate(0,0) scale(1)' }, '33%': { transform: 'translate(30px,-20px) scale(1.1)' }, '66%': { transform: 'translate(-20px,15px) scale(0.95)' } },
         },
         animation: {
           drift: 'drift 6s ease-in-out infinite',
           fadein: 'fadein 0.4s ease-out both',
+          floaty: 'floaty 7s ease-in-out infinite',
+          aurora: 'aurora 14s ease-in-out infinite',
         },
       },
     },
@@ -48,6 +55,9 @@
   ::-webkit-scrollbar-track { background: #eef6f7; }
   ::-webkit-scrollbar-thumb { background: #7ab7c4; border-radius: 9999px; }
   ::-webkit-scrollbar-thumb:hover { background: #4f9baa; }
+  ::selection { background: #ffc0ad; color: #122b33; }
+  .reveal { opacity: 0; transform: translateY(24px); transition: opacity .7s ease, transform .7s ease; }
+  .reveal.visible { opacity: 1; transform: none; }
 </style>
 </head>
 <body class="bg-sand-50 text-sea-900 antialiased">
@@ -465,6 +475,23 @@ function Modal({ onClose, children, maxW }) {
   );
 }
 
+function Reveal({ children, className }) {
+  const ref = React.useRef(null);
+  const [visible, setVisible] = React.useState(false);
+  React.useEffect(() => {
+    const obs = new IntersectionObserver(entries => {
+      if (entries[0].isIntersecting) { setVisible(true); obs.disconnect(); }
+    }, { threshold: 0.15 });
+    if (ref.current) obs.observe(ref.current);
+    return () => obs.disconnect();
+  }, []);
+  return (
+    <div ref={ref} className={(className || '') + ' reveal' + (visible ? ' visible' : '')}>
+      {children}
+    </div>
+  );
+}
+
 /* ===== estado-del-mar.03-diagnostic-quiz.js ===== */
 
 function DiagnosticQuiz({ topic, onComplete }) {
@@ -646,11 +673,11 @@ function TopicCard({ topic, locked, onClick }) {
 function TopicsGrid({ topics, subscribed, onSelect }) {
   return (
     <section id="ventanas" className="max-w-6xl mx-auto px-6 py-20">
-      <div className="text-center max-w-2xl mx-auto mb-14">
-        <p className="uppercase tracking-widest text-xs text-sea-500 font-semibold mb-3">Las ventanas</p>
-        <h2 className="font-serif text-3xl md:text-4xl font-semibold text-sea-900">Cada estado interior tiene su propia ventana</h2>
+      <Reveal className="text-center max-w-2xl mx-auto mb-14">
+        <p className="uppercase tracking-widest text-xs text-coral-600 font-bold mb-3">Las ventanas</p>
+        <h2 className="font-serif text-4xl md:text-5xl font-semibold text-sea-900">Cada estado interior tiene su propia ventana</h2>
         <p className="text-sea-600 mt-4">Elegí la que más resuena con lo que estás atravesando hoy. Podés mirar el menú completo sin suscribirte; para entrar a cada ventana hace falta ser parte de Estado del Mar.</p>
-      </div>
+      </Reveal>
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-x-6 gap-y-12">
         {topics.map(topic => (
           <TopicCard key={topic.id} topic={topic} locked={!subscribed} onClick={() => onSelect(topic.id)} />
@@ -662,48 +689,66 @@ function TopicsGrid({ topics, subscribed, onSelect }) {
 
 /* ===== estado-del-mar.08-layout.js ===== */
 
-function Header({ loggedIn, onNav, onNavigateSection, onOpenAuth, onOpenAccount }) {
+function Header({ loggedIn, onNav, onNavigateSection, onOpenPage, onOpenAuth, onOpenAccount, onOpenSubscribe }) {
   const [mobileOpen, setMobileOpen] = React.useState(false);
 
-  const navItems = [
+  const sectionItems = [
     { id: 'ventanas', label: 'Ventanas' },
     { id: 'como-funciona', label: 'Cómo funciona' },
     { id: 'precio', label: 'Precio' },
   ];
+  const pageItems = [
+    { id: 'sobre', label: 'Sobre' },
+    { id: 'faq', label: 'FAQ' },
+    { id: 'contacto', label: 'Contacto' },
+  ];
 
-  function handleNavClick(sectionId) {
+  function handleSection(sectionId) {
     setMobileOpen(false);
     onNavigateSection(sectionId);
   }
+  function handlePage(pageId) {
+    setMobileOpen(false);
+    onOpenPage(pageId);
+  }
 
   return (
-    <header className="sticky top-0 z-40 bg-sand-50/90 backdrop-blur-sm border-b border-sea-100">
+    <header className="sticky top-0 z-40 bg-sea-950/85 backdrop-blur-md border-b border-white/10 text-white">
       <div className="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between">
-        <button onClick={() => onNav('home')} className="flex items-center gap-2 font-serif text-xl font-semibold text-sea-900">
-          <span>🌊</span> Estado del Mar
+        <button onClick={() => onNav('home')} className="flex items-center gap-2 font-serif text-xl font-semibold">
+          <span className="inline-block animate-drift">🌊</span> Estado del Mar
         </button>
-        <nav className="hidden md:flex items-center gap-8 text-sm font-semibold text-sea-700">
-          {navItems.map(item => (
-            <button key={item.id} onClick={() => handleNavClick(item.id)} className="hover:text-sea-900">{item.label}</button>
+        <nav className="hidden md:flex items-center gap-6 text-sm font-semibold text-sea-100">
+          {sectionItems.map(item => (
+            <button key={item.id} onClick={() => handleSection(item.id)} className="hover:text-white transition-colors">{item.label}</button>
+          ))}
+          {pageItems.map(item => (
+            <button key={item.id} onClick={() => handlePage(item.id)} className="hover:text-white transition-colors">{item.label}</button>
           ))}
         </nav>
         <div className="flex items-center gap-3">
           {loggedIn ? (
-            <button onClick={onOpenAccount} className="text-sm font-semibold text-sea-700 hover:text-sea-900">Mi cuenta</button>
+            <button onClick={onOpenAccount} className="text-sm font-semibold text-sea-100 hover:text-white">Mi cuenta</button>
           ) : (
-            <button onClick={onOpenAuth} className="text-sm font-semibold text-sea-700 hover:text-sea-900">
+            <button onClick={onOpenAuth} className="text-sm font-semibold text-sea-100 hover:text-white">
               Ingresar
             </button>
           )}
-          <button onClick={() => setMobileOpen(o => !o)} className="md:hidden w-9 h-9 flex items-center justify-center text-sea-700 text-xl" aria-label="Abrir menú">
+          <button onClick={onOpenSubscribe} className="hidden sm:inline-block bg-coral-500 hover:bg-coral-600 text-white text-sm font-bold px-5 py-2 rounded-full transition-colors shadow-lg shadow-coral-500/25">
+            Suscribirme
+          </button>
+          <button onClick={() => setMobileOpen(o => !o)} className="md:hidden w-9 h-9 flex items-center justify-center text-xl" aria-label="Abrir menú">
             {mobileOpen ? '✕' : '☰'}
           </button>
         </div>
       </div>
       {mobileOpen && (
-        <nav className="md:hidden border-t border-sea-100 bg-sand-50 px-6 py-3 flex flex-col gap-1">
-          {navItems.map(item => (
-            <button key={item.id} onClick={() => handleNavClick(item.id)} className="text-left text-sea-700 font-semibold py-2">{item.label}</button>
+        <nav className="md:hidden border-t border-white/10 bg-sea-950 px-6 py-3 flex flex-col gap-1">
+          {sectionItems.map(item => (
+            <button key={item.id} onClick={() => handleSection(item.id)} className="text-left text-sea-100 font-semibold py-2">{item.label}</button>
+          ))}
+          {pageItems.map(item => (
+            <button key={item.id} onClick={() => handlePage(item.id)} className="text-left text-sea-100 font-semibold py-2">{item.label}</button>
           ))}
         </nav>
       )}
@@ -713,17 +758,26 @@ function Header({ loggedIn, onNav, onNavigateSection, onOpenAuth, onOpenAccount 
 
 function Hero({ onOpenSubscribe }) {
   return (
-    <section className="relative bg-gradient-to-b from-sea-800 via-sea-700 to-sea-600 text-white overflow-hidden">
-      <div className="max-w-4xl mx-auto px-6 pt-20 pb-28 text-center relative z-10">
-        <p className="uppercase tracking-[0.2em] text-xs text-sea-200 font-semibold mb-5 animate-fadein">Un espacio para mirar hacia adentro</p>
-        <h1 className="font-serif text-5xl md:text-6xl font-semibold mb-6 animate-fadein">Estado del Mar</h1>
+    <section className="relative bg-sea-950 text-white overflow-hidden">
+      <div className="absolute -top-24 -left-24 w-96 h-96 rounded-full bg-sea-500/30 blur-3xl animate-aurora"></div>
+      <div className="absolute top-40 -right-32 w-[28rem] h-[28rem] rounded-full bg-coral-500/20 blur-3xl animate-aurora" style={{ animationDelay: '-7s' }}></div>
+      <div className="absolute bottom-0 left-1/3 w-80 h-80 rounded-full bg-sea-300/10 blur-3xl animate-aurora" style={{ animationDelay: '-3s' }}></div>
+
+      <div className="hidden lg:flex absolute left-14 top-36 w-16 h-16 rounded-full bg-gradient-to-br from-sky-600 to-slate-800 border-2 border-white/20 items-center justify-center text-2xl animate-floaty shadow-xl">🌊</div>
+      <div className="hidden lg:flex absolute left-32 bottom-44 w-14 h-14 rounded-full bg-gradient-to-br from-violet-600 to-indigo-900 border-2 border-white/20 items-center justify-center text-xl animate-floaty shadow-xl" style={{ animationDelay: '-2.5s' }}>🌌</div>
+      <div className="hidden lg:flex absolute right-16 top-32 w-14 h-14 rounded-full bg-gradient-to-br from-amber-400 to-orange-600 border-2 border-white/20 items-center justify-center text-xl animate-floaty shadow-xl" style={{ animationDelay: '-4s' }}>🧭</div>
+      <div className="hidden lg:flex absolute right-36 bottom-40 w-16 h-16 rounded-full bg-gradient-to-br from-rose-400 to-pink-600 border-2 border-white/20 items-center justify-center text-2xl animate-floaty shadow-xl" style={{ animationDelay: '-1.2s' }}>💞</div>
+
+      <div className="max-w-4xl mx-auto px-6 pt-24 pb-32 text-center relative z-10">
+        <p className="uppercase tracking-[0.25em] text-xs text-coral-300 font-bold mb-6 animate-fadein">Un espacio para mirar hacia adentro</p>
+        <h1 className="font-serif text-6xl md:text-7xl font-semibold mb-6 animate-fadein leading-none">Estado del Mar</h1>
         <p className="text-lg md:text-xl text-sea-100 max-w-2xl mx-auto leading-relaxed mb-10 animate-fadein">
           Así como el mar cambia de estado según el día, nosotros también. Elegí la ventana que refleja por dónde estás pasando hoy,
           y encontrá psicoeducación, meditaciones y ejercicios pensados para acompañarte.
         </p>
         <div className="flex flex-col sm:flex-row gap-4 justify-center animate-fadein">
-          <a href="#ventanas" className="bg-white text-sea-800 font-semibold px-7 py-3.5 rounded-full hover:bg-sand-100 transition-colors">Ver las ventanas</a>
-          <a href="#como-funciona" className="border border-white/50 text-white font-semibold px-7 py-3.5 rounded-full hover:bg-white/10 transition-colors">Cómo funciona</a>
+          <a href="#ventanas" className="bg-coral-500 hover:bg-coral-600 text-white font-bold px-8 py-4 rounded-full transition-colors shadow-xl shadow-coral-500/30">Ver las ventanas</a>
+          <a href="#como-funciona" className="border border-white/30 text-white font-semibold px-8 py-4 rounded-full hover:bg-white/10 transition-colors">Cómo funciona</a>
         </div>
       </div>
       <div className="text-sand-50 relative z-10"><WaveDivider /></div>
@@ -738,32 +792,37 @@ function HowItWorks() {
     { emoji: '🌿', title: 'Recibí tu contenido', text: 'Psicoeducación, una meditación y un ejercicio práctico, elegidos según tu momento.' },
   ];
   return (
-    <section id="como-funciona" className="max-w-6xl mx-auto px-6 py-20">
-      <div className="text-center max-w-2xl mx-auto mb-14">
-        <p className="uppercase tracking-widest text-xs text-sea-500 font-semibold mb-3">Cómo funciona</p>
-        <h2 className="font-serif text-3xl md:text-4xl font-semibold text-sea-900">Tres pasos, a tu propio ritmo</h2>
-      </div>
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-10">
+    <section id="como-funciona" className="max-w-6xl mx-auto px-6 py-24">
+      <Reveal className="text-center max-w-2xl mx-auto mb-14">
+        <p className="uppercase tracking-widest text-xs text-coral-600 font-bold mb-3">Cómo funciona</p>
+        <h2 className="font-serif text-4xl md:text-5xl font-semibold text-sea-900">Tres pasos, a tu propio ritmo</h2>
+      </Reveal>
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
         {steps.map((s, i) => (
-          <div key={i} className="text-center">
-            <div className="w-16 h-16 rounded-full bg-sea-100 text-3xl flex items-center justify-center mx-auto mb-5">{s.emoji}</div>
-            <h3 className="font-serif text-xl font-semibold text-sea-900 mb-2">{s.title}</h3>
-            <p className="text-sea-600 text-sm leading-relaxed max-w-xs mx-auto">{s.text}</p>
-          </div>
+          <Reveal key={i}>
+            <div className="relative bg-white rounded-3xl border border-sea-100 p-8 text-center h-full shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300">
+              <span className="absolute top-4 left-6 font-serif text-5xl text-sea-100 font-semibold select-none">{i + 1}</span>
+              <div className="w-16 h-16 rounded-full bg-sea-50 text-3xl flex items-center justify-center mx-auto mb-5 relative">{s.emoji}</div>
+              <h3 className="font-serif text-2xl font-semibold text-sea-900 mb-2">{s.title}</h3>
+              <p className="text-sea-600 text-sm leading-relaxed">{s.text}</p>
+            </div>
+          </Reveal>
         ))}
       </div>
     </section>
   );
 }
 
-function PricingSection({ price, onOpenSubscribe }) {
+function PricingSection({ price, onOpenSubscribe, onOpenPage }) {
   return (
-    <section id="precio" className="bg-sea-900 text-white py-20">
-      <div className="max-w-lg mx-auto px-6 text-center">
-        <p className="uppercase tracking-widest text-xs text-sea-300 font-semibold mb-3">Membresía</p>
-        <h2 className="font-serif text-3xl md:text-4xl font-semibold mb-10">Una sola suscripción, todas las ventanas</h2>
-        <div className="bg-white/5 border border-white/10 rounded-3xl p-10">
-          <p className="font-serif text-5xl font-semibold mb-1">${price}<span className="text-lg font-sans text-sea-300">/mes</span></p>
+    <section id="precio" className="relative bg-sea-950 text-white py-24 overflow-hidden">
+      <div className="absolute -top-20 right-10 w-80 h-80 rounded-full bg-coral-500/15 blur-3xl animate-aurora"></div>
+      <div className="absolute bottom-0 -left-20 w-96 h-96 rounded-full bg-sea-500/20 blur-3xl animate-aurora" style={{ animationDelay: '-6s' }}></div>
+      <div className="max-w-lg mx-auto px-6 text-center relative z-10">
+        <p className="uppercase tracking-widest text-xs text-coral-300 font-bold mb-3">Membresía</p>
+        <h2 className="font-serif text-4xl md:text-5xl font-semibold mb-10">Una sola suscripción, todas las ventanas</h2>
+        <div className="bg-white/5 border border-white/15 backdrop-blur-sm rounded-3xl p-10 shadow-2xl">
+          <p className="font-serif text-6xl font-semibold mb-1">${price}<span className="text-lg font-sans text-sea-300">/mes</span></p>
           <p className="text-xs text-sea-300 mb-8">(precio de ejemplo — se edita desde el panel de administración)</p>
           <ul className="text-left space-y-3 text-sea-100 mb-8 max-w-xs mx-auto">
             <li>🌊 Contenido psicoeducativo en formato de diapositivas, a tu ritmo</li>
@@ -771,21 +830,27 @@ function PricingSection({ price, onOpenSubscribe }) {
             <li>🌊 Ejercicios prácticos en cada ventana</li>
             <li>🌊 Nuevas ventanas sumándose con el tiempo</li>
           </ul>
-          <button onClick={onOpenSubscribe} className="w-full bg-white text-sea-900 font-semibold px-7 py-3.5 rounded-full hover:bg-sand-100 transition-colors">
+          <button onClick={onOpenSubscribe} className="w-full bg-coral-500 hover:bg-coral-600 text-white font-bold px-7 py-4 rounded-full transition-colors shadow-xl shadow-coral-500/25">
             Suscribirme
           </button>
           <p className="text-xs text-sea-300 mt-4">Podés cancelar cuando quieras.</p>
         </div>
+        <button onClick={() => onOpenPage('faq')} className="text-sea-300 text-sm underline hover:text-white mt-8">¿Tenés dudas? Mirá las preguntas frecuentes</button>
       </div>
     </section>
   );
 }
 
-function Footer({ onOpenAdmin, showAdminLink }) {
+function Footer({ onOpenAdmin, showAdminLink, onOpenPage }) {
   return (
-    <footer className="bg-sea-950 text-sea-300 py-14">
+    <footer className="bg-sea-950 text-sea-300 py-16 border-t border-white/5">
       <div className="max-w-4xl mx-auto px-6 text-center">
-        <p className="font-serif text-2xl text-white mb-3">🌊 Estado del Mar</p>
+        <p className="font-serif text-2xl text-white mb-5">🌊 Estado del Mar</p>
+        <nav className="flex flex-wrap justify-center gap-x-8 gap-y-2 text-sm font-semibold mb-8">
+          <button onClick={() => onOpenPage('sobre')} className="hover:text-white transition-colors">Sobre el proyecto</button>
+          <button onClick={() => onOpenPage('faq')} className="hover:text-white transition-colors">Preguntas frecuentes</button>
+          <button onClick={() => onOpenPage('contacto')} className="hover:text-white transition-colors">Contacto</button>
+        </nav>
         <p className="text-sm leading-relaxed max-w-xl mx-auto mb-6">
           Estado del Mar ofrece contenido psicoeducativo, filosófico y espiritual con fines orientativos. No reemplaza un tratamiento
           ni la atención de un profesional de salud mental. Si estás atravesando una crisis o necesitás ayuda inmediata, por favor
@@ -1248,6 +1313,160 @@ function AdminPanel({ topics, price, setPrice, onExit, onSaveTopic, onDeleteTopi
   );
 }
 
+/* ===== estado-del-mar.13-pages.js ===== */
+
+const WHATSAPP_NUMBER = '5492235125610'; // +54 9 223 512-5610
+const WHATSAPP_MESSAGE = 'Hola! Vengo del sitio de Estado del Mar y quería hacer una consulta.';
+
+function PageBanner({ overline, title, subtitle }) {
+  return (
+    <div className="relative bg-sea-950 text-white overflow-hidden">
+      <div className="absolute -top-20 -right-20 w-80 h-80 rounded-full bg-coral-500/15 blur-3xl animate-aurora"></div>
+      <div className="absolute bottom-0 -left-24 w-96 h-96 rounded-full bg-sea-500/20 blur-3xl animate-aurora" style={{ animationDelay: '-5s' }}></div>
+      <div className="max-w-3xl mx-auto px-6 pt-16 pb-20 text-center relative z-10">
+        <p className="uppercase tracking-[0.25em] text-xs text-coral-300 font-bold mb-4">{overline}</p>
+        <h1 className="font-serif text-4xl md:text-5xl font-semibold mb-4">{title}</h1>
+        {subtitle && <p className="text-sea-100 leading-relaxed max-w-xl mx-auto">{subtitle}</p>}
+      </div>
+      <div className="text-sand-50 relative z-10"><WaveDivider /></div>
+    </div>
+  );
+}
+
+function SobrePage({ onOpenSubscribe, onOpenPage }) {
+  const values = [
+    { emoji: '🌊', title: 'Calma', text: 'Nada acá corre. El contenido está pensado para bajarle el volumen al ruido, no para sumarte otra exigencia.' },
+    { emoji: '🧭', title: 'Claridad', text: 'Herramientas concretas y lenguaje simple para entender qué te pasa y por dónde empezar.' },
+    { emoji: '🌱', title: 'Práctica', text: 'Cada ventana termina en algo que podés hacer hoy: un ejercicio, una meditación, un gesto pequeño.' },
+  ];
+  return (
+    <div className="bg-sand-50 min-h-screen">
+      <PageBanner
+        overline="Sobre el proyecto"
+        title="Un espacio para mirar hacia adentro"
+        subtitle="Estado del Mar nace de una idea simple: no estamos siempre igual, y no necesitamos las mismas herramientas todos los días."
+      />
+      <div className="max-w-3xl mx-auto px-6 py-16 space-y-12">
+        <Reveal>
+          <h2 className="font-serif text-3xl text-sea-900 mb-4">¿Por qué "Estado del Mar"?</h2>
+          <p className="text-sea-700 leading-relaxed mb-4">
+            El mar no está siempre igual: hay días de marea calma, días de oleaje moderado y días de mar agitado.
+            Con nosotros pasa lo mismo. La misma persona puede necesitar herramientas para la ansiedad un mes,
+            y para un duelo o una decisión importante al mes siguiente.
+          </p>
+          <p className="text-sea-700 leading-relaxed">
+            Por eso este espacio no propone un único camino, sino diez ventanas temáticas. Cada una es una puerta
+            de entrada distinta al mismo lugar: tu mundo interior.
+          </p>
+        </Reveal>
+        <Reveal>
+          <h2 className="font-serif text-3xl text-sea-900 mb-4">Qué vas a encontrar</h2>
+          <p className="text-sea-700 leading-relaxed">
+            Cada ventana combina psicoeducación en diapositivas breves, una meditación guiada y un ejercicio práctico.
+            Antes de entrar, un check-in de menos de un minuto te ayuda a ubicar en qué momento estás,
+            para que el contenido te encuentre donde estás — no donde "deberías" estar.
+          </p>
+        </Reveal>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
+          {values.map((v, i) => (
+            <Reveal key={i}>
+              <div className="bg-white rounded-3xl border border-sea-100 p-6 text-center h-full shadow-sm">
+                <p className="text-3xl mb-3">{v.emoji}</p>
+                <h3 className="font-serif text-xl font-semibold text-sea-900 mb-2">{v.title}</h3>
+                <p className="text-sea-600 text-sm leading-relaxed">{v.text}</p>
+              </div>
+            </Reveal>
+          ))}
+        </div>
+        <Reveal>
+          <div className="bg-sea-900 text-white rounded-3xl p-8 md:p-10 text-center">
+            <h3 className="font-serif text-2xl md:text-3xl mb-3">¿Te resuena?</h3>
+            <p className="text-sea-200 mb-6 max-w-md mx-auto">Una sola suscripción abre todas las ventanas, a tu propio ritmo.</p>
+            <div className="flex flex-col sm:flex-row gap-3 justify-center">
+              <button onClick={onOpenSubscribe} className="bg-coral-500 hover:bg-coral-600 text-white font-bold px-7 py-3 rounded-full transition-colors">Suscribirme</button>
+              <button onClick={() => onOpenPage('contacto')} className="border border-white/30 text-white font-semibold px-7 py-3 rounded-full hover:bg-white/10 transition-colors">Hacer una consulta</button>
+            </div>
+          </div>
+        </Reveal>
+      </div>
+    </div>
+  );
+}
+
+function FaqItem({ q, a, open, onToggle }) {
+  return (
+    <div className="bg-white rounded-2xl border border-sea-100 overflow-hidden shadow-sm">
+      <button onClick={onToggle} className="w-full flex items-center justify-between gap-4 px-6 py-5 text-left">
+        <span className="font-semibold text-sea-900">{q}</span>
+        <span className={"text-coral-500 text-2xl leading-none transition-transform duration-200 " + (open ? "rotate-45" : "")}>+</span>
+      </button>
+      {open && <p className="px-6 pb-5 text-sea-600 leading-relaxed animate-fadein">{a}</p>}
+    </div>
+  );
+}
+
+function FaqPage({ onOpenPage }) {
+  const [openIndex, setOpenIndex] = React.useState(0);
+  const faqs = [
+    { q: '¿Qué es exactamente Estado del Mar?', a: 'Un espacio de contenido psicoeducativo, filosófico y espiritual organizado en diez ventanas temáticas: ansiedad, desilusión, control, sentido de la vida, crianza, pareja, armonía familiar, desapego, miedos, y espiritualidad y trascendencia.' },
+    { q: '¿Esto reemplaza una terapia?', a: 'No. El contenido tiene fines orientativos y de acompañamiento: puede complementar un proceso personal o terapéutico, pero no sustituye la atención de un profesional de salud mental. Si estás atravesando una crisis, por favor buscá ayuda profesional.' },
+    { q: '¿Qué incluye la suscripción?', a: 'Acceso completo a todas las ventanas: el check-in de cada tema, el contenido psicoeducativo en diapositivas, la meditación guiada y el ejercicio práctico. También todo el contenido nuevo que se vaya sumando.' },
+    { q: '¿Cómo funciona el check-in?', a: 'Son cuatro preguntas que se responden en menos de un minuto. El resultado (marea calma, oleaje moderado o mar agitado) te orienta sobre cómo estás hoy respecto de ese tema. Es una brújula para elegir contenido, no un diagnóstico clínico.' },
+    { q: '¿Necesito experiencia en meditación?', a: 'Para nada. Las meditaciones son guiadas, cortas (entre 5 y 10 minutos) y pensadas para cualquier nivel, incluso si nunca meditaste.' },
+    { q: '¿Puedo cancelar cuando quiera?', a: 'Sí. Desde "Mi cuenta" podés cancelar la suscripción en cualquier momento, sin trámites ni preguntas.' },
+    { q: '¿Cómo se paga?', a: 'Por ahora el sitio funciona como prototipo navegable y la suscripción se activa sin cobro real. La pasarela de pago se va a integrar próximamente.' },
+    { q: 'Tengo otra duda, ¿cómo los contacto?', a: 'Escribinos desde la página de contacto — respondemos por WhatsApp.' },
+  ];
+  return (
+    <div className="bg-sand-50 min-h-screen">
+      <PageBanner overline="Preguntas frecuentes" title="Dudas comunes, respuestas simples" />
+      <div className="max-w-2xl mx-auto px-6 py-16">
+        <div className="space-y-3">
+          {faqs.map((f, i) => (
+            <FaqItem key={i} q={f.q} a={f.a} open={openIndex === i} onToggle={() => setOpenIndex(openIndex === i ? null : i)} />
+          ))}
+        </div>
+        <div className="text-center mt-12">
+          <p className="text-sea-600 mb-4">¿No encontraste lo que buscabas?</p>
+          <button onClick={() => onOpenPage('contacto')} className="bg-sea-800 hover:bg-sea-900 text-white font-semibold px-7 py-3 rounded-full transition-colors">Ir a contacto</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ContactoPage({ onOpenPage }) {
+  const waLink = 'https://wa.me/' + WHATSAPP_NUMBER + '?text=' + encodeURIComponent(WHATSAPP_MESSAGE);
+  return (
+    <div className="bg-sand-50 min-h-screen">
+      <PageBanner
+        overline="Contacto"
+        title="Estamos del otro lado"
+        subtitle="Si tenés una consulta sobre el contenido, la suscripción o cualquier otra cosa, escribinos con confianza."
+      />
+      <div className="max-w-xl mx-auto px-6 py-16 space-y-6">
+        <Reveal>
+          <div className="bg-white rounded-3xl border border-sea-100 p-8 md:p-10 text-center shadow-sm">
+            <p className="text-4xl mb-4">💬</p>
+            <h2 className="font-serif text-2xl md:text-3xl text-sea-900 mb-3">Escribinos por WhatsApp</h2>
+            <p className="text-sea-600 mb-8">Es la forma más directa de llegar a nosotros. Respondemos generalmente dentro de las 48 horas.</p>
+            <a href={waLink} target="_blank" rel="noreferrer" className="inline-block bg-emerald-500 hover:bg-emerald-600 text-white font-bold px-8 py-4 rounded-full transition-colors shadow-xl shadow-emerald-500/25">
+              Abrir WhatsApp
+            </a>
+            <p className="text-xs text-sea-400 mt-4">Se abre con un mensaje ya escrito — podés editarlo antes de enviar.</p>
+          </div>
+        </Reveal>
+        <Reveal>
+          <div className="bg-sea-50 border border-sea-100 rounded-3xl p-6 md:p-8 text-center">
+            <p className="text-sea-700 mb-4">¿Tu duda es sobre la suscripción o el contenido? Puede que ya esté respondida.</p>
+            <button onClick={() => onOpenPage('faq')} className="text-sea-800 font-semibold underline hover:text-sea-950">Ver preguntas frecuentes</button>
+          </div>
+        </Reveal>
+      </div>
+    </div>
+  );
+}
+
 /* ===== estado-del-mar.12-app-root.js ===== */
 
 function App() {
@@ -1306,6 +1525,11 @@ function App() {
       setPendingScroll(sectionId);
       setView('home');
     }
+  }
+  function openPage(pageId) {
+    setActiveTopicId(null);
+    setView(pageId);
+    window.scrollTo(0, 0);
   }
 
   async function markSubscribedForUser(userId) {
@@ -1422,14 +1646,27 @@ function App() {
     );
   }
 
+  if (view === 'sobre' || view === 'faq' || view === 'contacto') {
+    return (
+      <div>
+        <Header loggedIn={loggedIn} onNav={goHome} onNavigateSection={goToSection} onOpenPage={openPage} onOpenAuth={openAuthFlow} onOpenAccount={() => setView('profile')} onOpenSubscribe={openSubscribeFlow} />
+        {view === 'sobre' && <SobrePage onOpenSubscribe={openSubscribeFlow} onOpenPage={openPage} />}
+        {view === 'faq' && <FaqPage onOpenPage={openPage} />}
+        {view === 'contacto' && <ContactoPage onOpenPage={openPage} />}
+        <Footer onOpenAdmin={() => setView('admin')} showAdminLink={isAdmin} onOpenPage={openPage} />
+        {showAuthModal && <AuthModal intent={authIntent} onClose={() => setShowAuthModal(false)} onAuthed={handleAuthed} />}
+      </div>
+    );
+  }
+
   if (view === 'detail') {
     const topic = topics.find(t => t.id === activeTopicId);
     if (!topic) { goHome(); return null; }
     return (
       <div>
-        <Header loggedIn={loggedIn} onNav={goHome} onNavigateSection={goToSection} onOpenAuth={openAuthFlow} onOpenAccount={() => setView('profile')} />
+        <Header loggedIn={loggedIn} onNav={goHome} onNavigateSection={goToSection} onOpenPage={openPage} onOpenAuth={openAuthFlow} onOpenAccount={() => setView('profile')} onOpenSubscribe={openSubscribeFlow} />
         <TopicDetail topic={topic} subscribed={subscribed} onBack={goHome} onOpenSubscribe={openSubscribeFlow} />
-        <Footer onOpenAdmin={() => setView('admin')} showAdminLink={isAdmin} />
+        <Footer onOpenAdmin={() => setView('admin')} showAdminLink={isAdmin} onOpenPage={openPage} />
         {showAuthModal && <AuthModal intent={authIntent} onClose={() => setShowAuthModal(false)} onAuthed={handleAuthed} />}
       </div>
     );
@@ -1437,12 +1674,12 @@ function App() {
 
   return (
     <div>
-      <Header loggedIn={loggedIn} onNav={goHome} onNavigateSection={goToSection} onOpenAuth={openAuthFlow} onOpenAccount={() => setView('profile')} />
+      <Header loggedIn={loggedIn} onNav={goHome} onNavigateSection={goToSection} onOpenPage={openPage} onOpenAuth={openAuthFlow} onOpenAccount={() => setView('profile')} onOpenSubscribe={openSubscribeFlow} />
       <Hero onOpenSubscribe={openSubscribeFlow} />
       <TopicsGrid topics={topics} subscribed={subscribed} onSelect={selectTopic} />
       <HowItWorks />
-      <PricingSection price={price} onOpenSubscribe={openSubscribeFlow} />
-      <Footer onOpenAdmin={() => setView('admin')} showAdminLink={isAdmin} />
+      <PricingSection price={price} onOpenSubscribe={openSubscribeFlow} onOpenPage={openPage} />
+      <Footer onOpenAdmin={() => setView('admin')} showAdminLink={isAdmin} onOpenPage={openPage} />
       {showAuthModal && <AuthModal intent={authIntent} onClose={() => setShowAuthModal(false)} onAuthed={handleAuthed} />}
     </div>
   );
