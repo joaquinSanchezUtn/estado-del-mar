@@ -689,7 +689,7 @@ function TopicsGrid({ topics, subscribed, onSelect }) {
 
 /* ===== estado-del-mar.08-layout.js ===== */
 
-function Header({ loggedIn, onNav, onNavigateSection, onOpenPage, onOpenAuth, onOpenAccount, onOpenSubscribe }) {
+function Header({ loggedIn, onNav, onNavigateSection, onOpenPage, onOpenAuth, onOpenRegister, onOpenAccount, onOpenSubscribe }) {
   const [mobileOpen, setMobileOpen] = React.useState(false);
 
   const sectionItems = [
@@ -730,9 +730,14 @@ function Header({ loggedIn, onNav, onNavigateSection, onOpenPage, onOpenAuth, on
           {loggedIn ? (
             <button onClick={onOpenAccount} className="text-sm font-semibold text-sea-100 hover:text-white">Mi cuenta</button>
           ) : (
-            <button onClick={onOpenAuth} className="text-sm font-semibold text-sea-100 hover:text-white">
-              Ingresar
-            </button>
+            <React.Fragment>
+              <button onClick={onOpenAuth} className="text-sm font-semibold text-sea-100 hover:text-white">
+                Ingresar
+              </button>
+              <button onClick={onOpenRegister} className="text-sm font-semibold text-white border border-white/30 hover:bg-white/10 px-4 py-1.5 rounded-full transition-colors">
+                Registrarse
+              </button>
+            </React.Fragment>
           )}
           <button onClick={onOpenSubscribe} className="hidden sm:inline-block bg-coral-500 hover:bg-coral-600 text-white text-sm font-bold px-5 py-2 rounded-full transition-colors shadow-lg shadow-coral-500/25">
             Suscribirme
@@ -865,8 +870,8 @@ function Footer({ onOpenAdmin, showAdminLink, onOpenPage }) {
 
 /* ===== estado-del-mar.09-modals.js ===== */
 
-function AuthModal({ intent, onClose, onAuthed }) {
-  const [mode, setMode] = React.useState(intent === 'subscribe' ? 'signup' : 'login'); // signup | login
+function AuthModal({ intent, initialMode, onClose, onAuthed }) {
+  const [mode, setMode] = React.useState(initialMode || (intent === 'subscribe' ? 'signup' : 'login')); // signup | login
   const [name, setName] = React.useState('');
   const [email, setEmail] = React.useState('');
   const [password, setPassword] = React.useState('');
@@ -1479,6 +1484,7 @@ function App() {
   const [price, setPrice] = React.useState('9.990');
   const [showAuthModal, setShowAuthModal] = React.useState(false);
   const [authIntent, setAuthIntent] = React.useState('account'); // 'account' | 'subscribe'
+  const [authInitialMode, setAuthInitialMode] = React.useState(null); // null | 'login' | 'signup'
   const [pendingScroll, setPendingScroll] = React.useState(null);
 
   React.useEffect(() => {
@@ -1564,12 +1570,20 @@ function App() {
       markSubscribed();
     } else {
       setAuthIntent('subscribe');
+      setAuthInitialMode('signup');
       setShowAuthModal(true);
     }
   }
 
   function openAuthFlow() {
     setAuthIntent('account');
+    setAuthInitialMode('login');
+    setShowAuthModal(true);
+  }
+
+  function openRegisterFlow() {
+    setAuthIntent('account');
+    setAuthInitialMode('signup');
     setShowAuthModal(true);
   }
 
@@ -1649,12 +1663,12 @@ function App() {
   if (view === 'sobre' || view === 'faq' || view === 'contacto') {
     return (
       <div>
-        <Header loggedIn={loggedIn} onNav={goHome} onNavigateSection={goToSection} onOpenPage={openPage} onOpenAuth={openAuthFlow} onOpenAccount={() => setView('profile')} onOpenSubscribe={openSubscribeFlow} />
+        <Header loggedIn={loggedIn} onNav={goHome} onNavigateSection={goToSection} onOpenPage={openPage} onOpenAuth={openAuthFlow} onOpenRegister={openRegisterFlow} onOpenAccount={() => setView('profile')} onOpenSubscribe={openSubscribeFlow} />
         {view === 'sobre' && <SobrePage onOpenSubscribe={openSubscribeFlow} onOpenPage={openPage} />}
         {view === 'faq' && <FaqPage onOpenPage={openPage} />}
         {view === 'contacto' && <ContactoPage onOpenPage={openPage} />}
         <Footer onOpenAdmin={() => setView('admin')} showAdminLink={isAdmin} onOpenPage={openPage} />
-        {showAuthModal && <AuthModal intent={authIntent} onClose={() => setShowAuthModal(false)} onAuthed={handleAuthed} />}
+        {showAuthModal && <AuthModal intent={authIntent} initialMode={authInitialMode} onClose={() => setShowAuthModal(false)} onAuthed={handleAuthed} />}
       </div>
     );
   }
@@ -1664,23 +1678,23 @@ function App() {
     if (!topic) { goHome(); return null; }
     return (
       <div>
-        <Header loggedIn={loggedIn} onNav={goHome} onNavigateSection={goToSection} onOpenPage={openPage} onOpenAuth={openAuthFlow} onOpenAccount={() => setView('profile')} onOpenSubscribe={openSubscribeFlow} />
+        <Header loggedIn={loggedIn} onNav={goHome} onNavigateSection={goToSection} onOpenPage={openPage} onOpenAuth={openAuthFlow} onOpenRegister={openRegisterFlow} onOpenAccount={() => setView('profile')} onOpenSubscribe={openSubscribeFlow} />
         <TopicDetail topic={topic} subscribed={subscribed} onBack={goHome} onOpenSubscribe={openSubscribeFlow} />
         <Footer onOpenAdmin={() => setView('admin')} showAdminLink={isAdmin} onOpenPage={openPage} />
-        {showAuthModal && <AuthModal intent={authIntent} onClose={() => setShowAuthModal(false)} onAuthed={handleAuthed} />}
+        {showAuthModal && <AuthModal intent={authIntent} initialMode={authInitialMode} onClose={() => setShowAuthModal(false)} onAuthed={handleAuthed} />}
       </div>
     );
   }
 
   return (
     <div>
-      <Header loggedIn={loggedIn} onNav={goHome} onNavigateSection={goToSection} onOpenPage={openPage} onOpenAuth={openAuthFlow} onOpenAccount={() => setView('profile')} onOpenSubscribe={openSubscribeFlow} />
+      <Header loggedIn={loggedIn} onNav={goHome} onNavigateSection={goToSection} onOpenPage={openPage} onOpenAuth={openAuthFlow} onOpenRegister={openRegisterFlow} onOpenAccount={() => setView('profile')} onOpenSubscribe={openSubscribeFlow} />
       <Hero onOpenSubscribe={openSubscribeFlow} />
       <TopicsGrid topics={topics} subscribed={subscribed} onSelect={selectTopic} />
       <HowItWorks />
       <PricingSection price={price} onOpenSubscribe={openSubscribeFlow} onOpenPage={openPage} />
       <Footer onOpenAdmin={() => setView('admin')} showAdminLink={isAdmin} onOpenPage={openPage} />
-      {showAuthModal && <AuthModal intent={authIntent} onClose={() => setShowAuthModal(false)} onAuthed={handleAuthed} />}
+      {showAuthModal && <AuthModal intent={authIntent} initialMode={authInitialMode} onClose={() => setShowAuthModal(false)} onAuthed={handleAuthed} />}
     </div>
   );
 }
