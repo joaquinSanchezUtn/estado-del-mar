@@ -28,7 +28,10 @@
             50: '#fdfaf4', 100: '#f7efdd', 200: '#efdcb8', 300: '#e4c690', 400: '#d7ab68',
           },
           coral: {
-            50: '#fff3ef', 100: '#ffe0d6', 200: '#ffc0ad', 300: '#ff9a7d', 400: '#ff7a59', 500: '#f95d38', 600: '#e64525', 700: '#c1361d',
+            50: '#fff6f2', 100: '#ffe9e0', 200: '#ffd3c2', 300: '#ffb59c', 400: '#ff9a7d', 500: '#f77e5c', 600: '#e86a48', 700: '#c1361d',
+          },
+          mist: {
+            50: '#f4faf9', 100: '#e4f3f0', 200: '#c8e7e1', 300: '#a3d5cc', 400: '#77bcb0', 500: '#54a196', 600: '#3f8379', 700: '#356a63',
           },
         },
         keyframes: {
@@ -36,12 +39,14 @@
           fadein: { '0%': { opacity: 0, transform: 'translateY(6px)' }, '100%': { opacity: 1, transform: 'translateY(0)' } },
           floaty: { '0%,100%': { transform: 'translateY(0) rotate(0deg)' }, '50%': { transform: 'translateY(-18px) rotate(3deg)' } },
           aurora: { '0%,100%': { transform: 'translate(0,0) scale(1)' }, '33%': { transform: 'translate(30px,-20px) scale(1.1)' }, '66%': { transform: 'translate(-20px,15px) scale(0.95)' } },
+          breathe: { '0%,100%': { transform: 'scale(1)', opacity: 0.9 }, '50%': { transform: 'scale(1.04)', opacity: 1 } },
         },
         animation: {
           drift: 'drift 6s ease-in-out infinite',
           fadein: 'fadein 0.4s ease-out both',
           floaty: 'floaty 7s ease-in-out infinite',
-          aurora: 'aurora 14s ease-in-out infinite',
+          aurora: 'aurora 18s ease-in-out infinite',
+          breathe: 'breathe 5s ease-in-out infinite',
         },
       },
     },
@@ -52,12 +57,95 @@
   body { font-family: 'Nunito Sans', sans-serif; }
   .font-serif { font-family: 'Cormorant Garamond', serif; }
   ::-webkit-scrollbar { width: 10px; height: 10px; }
-  ::-webkit-scrollbar-track { background: #eef6f7; }
-  ::-webkit-scrollbar-thumb { background: #7ab7c4; border-radius: 9999px; }
-  ::-webkit-scrollbar-thumb:hover { background: #4f9baa; }
-  ::selection { background: #ffc0ad; color: #122b33; }
-  .reveal { opacity: 0; transform: translateY(24px); transition: opacity .7s ease, transform .7s ease; }
+  ::-webkit-scrollbar-track { background: #f4faf9; }
+  ::-webkit-scrollbar-thumb { background: #a3d5cc; border-radius: 9999px; }
+  ::-webkit-scrollbar-thumb:hover { background: #77bcb0; }
+  ::selection { background: #c8e7e1; color: #193f4a; }
+  body { background: #f7fbfb; }
+  .reveal { opacity: 0; transform: translateY(24px); transition: opacity .7s cubic-bezier(.22,.61,.36,1), transform .7s cubic-bezier(.22,.61,.36,1); }
   .reveal.visible { opacity: 1; transform: none; }
+
+  /* ===== Sistema unificado de botones ===== */
+  .btn {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: .5rem;
+    font-weight: 700;
+    line-height: 1;
+    padding: .95rem 1.9rem;
+    border-radius: 9999px;
+    border: 1px solid transparent;
+    cursor: pointer;
+    isolation: isolate;
+    overflow: hidden;
+    text-align: center;
+    transition: transform .28s cubic-bezier(.34,1.56,.64,1), box-shadow .28s ease, background-color .28s ease, color .28s ease, border-color .28s ease;
+    will-change: transform;
+    -webkit-tap-highlight-color: transparent;
+  }
+  /* barrido de brillo al pasar el mouse */
+  .btn::before {
+    content: "";
+    position: absolute;
+    top: 0; left: -120%;
+    width: 60%; height: 100%;
+    background: linear-gradient(100deg, transparent, rgba(255,255,255,.5), transparent);
+    transform: skewX(-18deg);
+    transition: left .6s cubic-bezier(.22,.61,.36,1);
+    z-index: -1;
+    pointer-events: none;
+  }
+  .btn:hover::before { left: 130%; }
+  .btn:hover { transform: translateY(-3px); }
+  .btn:active { transform: translateY(-1px) scale(.97); transition-duration: .09s; }
+  .btn:focus-visible { outline: none; box-shadow: 0 0 0 4px rgba(119,188,176,.45); }
+
+  /* Primario — verde-mar sereno */
+  .btn-primary { background: linear-gradient(135deg, #77bcb0, #3f8379); color: #fff; box-shadow: 0 8px 22px -8px rgba(63,131,121,.55); }
+  .btn-primary:hover { box-shadow: 0 16px 30px -10px rgba(63,131,121,.6); }
+
+  /* Cálido — coral suave, para el CTA principal */
+  .btn-coral { background: linear-gradient(135deg, #ffb59c, #f77e5c); color: #fff; box-shadow: 0 8px 22px -8px rgba(247,126,92,.5); }
+  .btn-coral:hover { box-shadow: 0 16px 30px -10px rgba(247,126,92,.55); }
+
+  /* Suave — relleno claro sobre fondo claro */
+  .btn-soft { background: #e4f3f0; color: #356a63; box-shadow: 0 4px 14px -8px rgba(63,131,121,.4); }
+  .btn-soft:hover { background: #d3ece7; box-shadow: 0 12px 24px -10px rgba(63,131,121,.45); }
+
+  /* Fantasma — contorno sutil */
+  .btn-ghost { background: rgba(255,255,255,.6); color: #356a63; border-color: #c8e7e1; }
+  .btn-ghost:hover { background: #fff; border-color: #a3d5cc; box-shadow: 0 10px 22px -12px rgba(63,131,121,.4); }
+
+  /* Sobre fondos con color (encabezados de ventana): claro translúcido */
+  .btn-ondark { background: rgba(255,255,255,.9); color: #1d515f; box-shadow: 0 8px 20px -10px rgba(0,0,0,.3); }
+  .btn-ondark:hover { background: #fff; }
+
+  /* WhatsApp */
+  .btn-whatsapp { background: linear-gradient(135deg, #4ade80, #22b366); color: #fff; box-shadow: 0 8px 22px -8px rgba(34,179,102,.5); }
+  .btn-whatsapp:hover { box-shadow: 0 16px 30px -10px rgba(34,179,102,.55); }
+
+  /* Peligro — cancelar */
+  .btn-danger { background: #fff1f0; color: #d1483b; border-color: #f6cfca; }
+  .btn-danger:hover { background: #fee2df; border-color: #f0b3ab; }
+  .btn-danger-solid { background: linear-gradient(135deg, #f08a7e, #d1483b); color: #fff; box-shadow: 0 8px 22px -8px rgba(209,72,59,.45); }
+
+  /* Tamaños */
+  .btn-lg { padding: 1.05rem 2.2rem; font-size: 1.05rem; }
+  .btn-sm { padding: .55rem 1.15rem; font-size: .85rem; }
+  .btn-block { width: 100%; }
+
+  /* Enlace-botón (texto con subrayado animado) */
+  .btn-link { position: relative; font-weight: 600; cursor: pointer; transition: color .2s ease; }
+  .btn-link::after { content: ""; position: absolute; left: 0; bottom: -2px; width: 100%; height: 1.5px; background: currentColor; transform: scaleX(0); transform-origin: left; transition: transform .3s cubic-bezier(.22,.61,.36,1); }
+  .btn-link:hover::after { transform: scaleX(1); }
+
+  /* Respeto por quienes prefieren menos movimiento */
+  @media (prefers-reduced-motion: reduce) {
+    .btn, .btn::before, .reveal { transition: none !important; }
+    .animate-drift, .animate-floaty, .animate-aurora, .animate-breathe { animation: none !important; }
+  }
 </style>
 </head>
 <body class="bg-sand-50 text-sea-900 antialiased">
@@ -455,7 +543,7 @@ function ProgressDots({ count, current }) {
   return (
     <div className="flex items-center justify-center gap-2">
       {Array.from({ length: count }).map((_, i) => (
-        <div key={i} className={"h-2 rounded-full transition-all " + (i === current ? "w-6 bg-sea-600" : "w-2 bg-sea-200")}></div>
+        <div key={i} className={"h-2 rounded-full transition-all duration-300 " + (i === current ? "w-6 bg-mist-500" : "w-2 bg-mist-200")}></div>
       ))}
     </div>
   );
@@ -467,8 +555,8 @@ function Lock({ className }) {
 
 function Modal({ onClose, children, maxW }) {
   return (
-    <div className="fixed inset-0 z-50 bg-sea-950/60 backdrop-blur-sm flex items-center justify-center p-4" onClick={onClose}>
-      <div onClick={e => e.stopPropagation()} className={"bg-white rounded-3xl shadow-2xl w-full max-h-[90vh] overflow-y-auto " + (maxW || "max-w-md")}>
+    <div className="fixed inset-0 z-50 bg-sea-900/40 backdrop-blur-sm flex items-center justify-center p-4 animate-fadein" onClick={onClose}>
+      <div onClick={e => e.stopPropagation()} className={"bg-white rounded-3xl shadow-2xl w-full max-h-[90vh] overflow-y-auto animate-fadein " + (maxW || "max-w-md")}>
         {children}
       </div>
     </div>
@@ -525,7 +613,7 @@ function DiagnosticQuiz({ topic, onComplete }) {
         <h3 className="font-serif text-3xl md:text-4xl font-semibold text-sea-900 mb-4">{result.level.label}</h3>
         <p className="text-sea-700 leading-relaxed mb-6">{result.level.message}</p>
         <p className="text-xs text-sea-400 mb-6 italic">Esto es una orientación para elegir contenido, no un diagnóstico clínico. Si algo de esto te desborda, una consulta con un profesional siempre suma.</p>
-        <button onClick={restart} className="text-sm text-sea-600 underline hover:text-sea-800">Volver a hacer el check-in</button>
+        <button onClick={restart} className="btn btn-soft btn-sm">Volver a hacer el check-in</button>
       </div>
     );
   }
@@ -540,7 +628,7 @@ function DiagnosticQuiz({ topic, onComplete }) {
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         {LIKERT.map(opt => (
           <button key={opt.label} onClick={() => choose(opt.value)}
-            className="rounded-2xl border-2 border-sea-100 hover:border-sea-400 hover:bg-sea-50 transition-colors px-5 py-4 text-sea-700 font-medium">
+            className="rounded-2xl border-2 border-mist-100 bg-white hover:border-mist-400 hover:bg-mist-50 hover:-translate-y-0.5 hover:shadow-md hover:shadow-mist-100 active:translate-y-0 active:scale-[.98] transition-all duration-200 px-5 py-4 text-sea-700 font-medium focus:outline-none focus-visible:ring-4 focus-visible:ring-mist-200">
             {opt.label}
           </button>
         ))}
@@ -556,19 +644,19 @@ function SlideViewer({ slides }) {
   const slide = slides[i];
   return (
     <div className="max-w-xl mx-auto py-4">
-      <div className="bg-white rounded-3xl shadow-sm border border-sea-100 p-8 md:p-10 min-h-[220px] flex flex-col justify-center animate-fadein" key={i}>
-        <p className="text-xs uppercase tracking-widest text-sea-400 mb-3">Diapositiva {i + 1} de {slides.length}</p>
+      <div className="bg-white rounded-3xl shadow-sm border border-mist-100 p-8 md:p-10 min-h-[220px] flex flex-col justify-center animate-fadein" key={i}>
+        <p className="text-xs uppercase tracking-widest text-mist-500 mb-3">Diapositiva {i + 1} de {slides.length}</p>
         <h4 className="font-serif text-2xl md:text-3xl text-sea-900 mb-3">{slide.title}</h4>
         <p className="text-sea-700 leading-relaxed">{slide.text}</p>
       </div>
       <div className="flex items-center justify-between mt-6">
         <button disabled={i === 0} onClick={() => setI(i - 1)}
-          className="px-4 py-2 rounded-full text-sm font-semibold disabled:opacity-30 disabled:cursor-not-allowed text-sea-600 hover:bg-sea-100">
+          className="px-4 py-2 rounded-full text-sm font-semibold disabled:opacity-30 disabled:cursor-not-allowed text-sea-600 hover:bg-mist-100 hover:-translate-x-0.5 transition-all duration-200">
           ← Anterior
         </button>
         <ProgressDots count={slides.length} current={i} />
         <button disabled={i === slides.length - 1} onClick={() => setI(i + 1)}
-          className="px-4 py-2 rounded-full text-sm font-semibold disabled:opacity-30 disabled:cursor-not-allowed text-sea-600 hover:bg-sea-100">
+          className="px-4 py-2 rounded-full text-sm font-semibold disabled:opacity-30 disabled:cursor-not-allowed text-sea-600 hover:bg-mist-100 hover:translate-x-0.5 transition-all duration-200">
           Siguiente →
         </button>
       </div>
@@ -606,18 +694,18 @@ function MeditationPlayer({ meditation }) {
 
   return (
     <div className="max-w-xl mx-auto py-4">
-      <div className="bg-gradient-to-br from-sea-700 to-sea-900 rounded-3xl shadow-sm p-8 md:p-10 text-center text-white">
-        <p className="text-xs uppercase tracking-widest text-sea-200 mb-2">Meditación guiada</p>
+      <div className="bg-gradient-to-br from-mist-400 to-sea-600 rounded-3xl shadow-lg shadow-mist-200/50 p-8 md:p-10 text-center text-white">
+        <p className="text-xs uppercase tracking-widest text-white/80 mb-2">Meditación guiada</p>
         <h4 className="font-serif text-2xl md:text-3xl mb-2">{meditation.title}</h4>
-        <p className="text-sea-100 text-sm mb-8">{meditation.description}</p>
+        <p className="text-white/90 text-sm mb-8">{meditation.description}</p>
         <button onClick={toggle}
-          className="w-16 h-16 rounded-full bg-white text-sea-800 text-2xl flex items-center justify-center mx-auto mb-6 hover:scale-105 transition-transform shadow-lg">
+          className={"w-16 h-16 rounded-full bg-white text-mist-600 text-2xl flex items-center justify-center mx-auto mb-6 hover:scale-110 active:scale-95 transition-transform duration-300 shadow-xl " + (playing ? "animate-breathe" : "")}>
           {playing ? '❚❚' : '▶'}
         </button>
-        <div className="w-full h-1.5 bg-white/20 rounded-full overflow-hidden mb-2">
+        <div className="w-full h-1.5 bg-white/25 rounded-full overflow-hidden mb-2">
           <div className="h-full bg-white transition-all" style={{ width: progress + '%' }}></div>
         </div>
-        <p className="text-xs text-sea-200">{elapsedMin}:{String(elapsedSec).padStart(2,'0')} / {meditation.duration}</p>
+        <p className="text-xs text-white/80">{elapsedMin}:{String(elapsedSec).padStart(2,'0')} / {meditation.duration}</p>
       </div>
       <p className="text-center text-xs text-sea-400 mt-4">Audio de ejemplo — acá se integraría el archivo de audio real.</p>
     </div>
@@ -634,18 +722,23 @@ function ExerciseChecklist({ exercise }) {
 
   return (
     <div className="max-w-xl mx-auto py-4">
-      <div className="bg-white rounded-3xl shadow-sm border border-sea-100 p-8 md:p-10">
-        <p className="text-xs uppercase tracking-widest text-sea-400 mb-2">Ejercicio para poner en práctica</p>
+      <div className="bg-white rounded-3xl shadow-sm border border-mist-100 p-8 md:p-10">
+        <p className="text-xs uppercase tracking-widest text-mist-500 mb-2">Ejercicio para poner en práctica</p>
         <h4 className="font-serif text-2xl md:text-3xl text-sea-900 mb-6">{exercise.title}</h4>
         <div className="space-y-3">
           {exercise.steps.map((step, i) => (
-            <label key={i} className={"flex items-start gap-3 p-4 rounded-2xl border cursor-pointer transition-colors " + (done[i] ? "bg-sea-50 border-sea-300" : "border-sea-100 hover:bg-sand-50")}>
-              <input type="checkbox" checked={!!done[i]} onChange={() => toggle(i)} className="mt-1 w-4 h-4 accent-sea-600" />
+            <label key={i} className={"flex items-start gap-3 p-4 rounded-2xl border cursor-pointer transition-all duration-200 hover:-translate-y-0.5 " + (done[i] ? "bg-mist-50 border-mist-300" : "border-mist-100 hover:bg-sand-50 hover:border-mist-200")}>
+              <input type="checkbox" checked={!!done[i]} onChange={() => toggle(i)} className="mt-1 w-4 h-4 accent-mist-500" />
               <span className={"text-sea-700 " + (done[i] ? "line-through text-sea-400" : "")}>{step}</span>
             </label>
           ))}
         </div>
-        <p className="text-sm text-sea-500 mt-6 text-center">{doneCount} de {total} pasos completados</p>
+        <div className="mt-6">
+          <div className="w-full h-2 bg-mist-100 rounded-full overflow-hidden mb-2">
+            <div className="h-full bg-gradient-to-r from-mist-400 to-mist-600 transition-all duration-500" style={{ width: (total ? (doneCount / total * 100) : 0) + '%' }}></div>
+          </div>
+          <p className="text-sm text-sea-500 text-center">{doneCount} de {total} pasos completados</p>
+        </div>
       </div>
     </div>
   );
@@ -655,16 +748,16 @@ function ExerciseChecklist({ exercise }) {
 
 function TopicCard({ topic, locked, onClick }) {
   return (
-    <button onClick={onClick} className="group text-left animate-fadein">
-      <div className={"relative rounded-full aspect-square w-full max-w-[220px] mx-auto bg-gradient-to-br " + topic.gradient + " shadow-lg flex items-center justify-center border-4 border-white group-hover:scale-105 transition-transform duration-300 group-hover:animate-drift"}>
-        <span className="text-5xl">{topic.emoji}</span>
+    <button onClick={onClick} className="group text-left animate-fadein focus:outline-none">
+      <div className={"relative rounded-full aspect-square w-full max-w-[220px] mx-auto bg-gradient-to-br " + topic.gradient + " shadow-lg shadow-mist-200/40 flex items-center justify-center border-4 border-white group-hover:scale-105 group-hover:shadow-xl group-hover:-translate-y-1 transition-all duration-300 group-hover:animate-drift group-focus-visible:ring-4 group-focus-visible:ring-mist-300"}>
+        <span className="text-5xl transition-transform duration-300 group-hover:scale-110">{topic.emoji}</span>
         {locked && (
-          <div className="absolute -bottom-1 -right-1 bg-white rounded-full w-10 h-10 flex items-center justify-center shadow-md text-lg">
+          <div className="absolute -bottom-1 -right-1 bg-white rounded-full w-10 h-10 flex items-center justify-center shadow-md text-lg group-hover:scale-110 transition-transform">
             <Lock />
           </div>
         )}
       </div>
-      <h3 className="font-serif text-xl font-semibold text-sea-900 text-center mt-4">{topic.title}</h3>
+      <h3 className="font-serif text-xl font-semibold text-sea-900 text-center mt-4 group-hover:text-mist-600 transition-colors">{topic.title}</h3>
       <p className="text-sea-600 text-sm text-center mt-1 px-2 line-clamp-2">{topic.description}</p>
     </button>
   );
@@ -713,48 +806,51 @@ function Header({ loggedIn, onNav, onNavigateSection, onOpenPage, onOpenAuth, on
   }
 
   return (
-    <header className="sticky top-0 z-40 bg-sea-950/85 backdrop-blur-md border-b border-white/10 text-white">
+    <header className="sticky top-0 z-40 bg-white/80 backdrop-blur-md border-b border-mist-100 text-sea-800">
       <div className="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between">
-        <button onClick={() => onNav('home')} className="flex items-center gap-2 font-serif text-xl font-semibold">
+        <button onClick={() => onNav('home')} className="flex items-center gap-2 font-serif text-xl font-semibold text-sea-900 hover:text-mist-600 transition-colors">
           <span className="inline-block animate-drift">🌊</span> Estado del Mar
         </button>
-        <nav className="hidden md:flex items-center gap-6 text-sm font-semibold text-sea-100">
+        <nav className="hidden md:flex items-center gap-6 text-sm font-semibold text-sea-600">
           {sectionItems.map(item => (
-            <button key={item.id} onClick={() => handleSection(item.id)} className="hover:text-white transition-colors">{item.label}</button>
+            <button key={item.id} onClick={() => handleSection(item.id)} className="btn-link hover:text-sea-900">{item.label}</button>
           ))}
           {pageItems.map(item => (
-            <button key={item.id} onClick={() => handlePage(item.id)} className="hover:text-white transition-colors">{item.label}</button>
+            <button key={item.id} onClick={() => handlePage(item.id)} className="btn-link hover:text-sea-900">{item.label}</button>
           ))}
         </nav>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2">
           {loggedIn ? (
-            <button onClick={onOpenAccount} className="text-sm font-semibold text-sea-100 hover:text-white">Mi cuenta</button>
+            <button onClick={onOpenAccount} className="btn btn-soft btn-sm">Mi cuenta</button>
           ) : (
             <React.Fragment>
-              <button onClick={onOpenAuth} className="text-sm font-semibold text-sea-100 hover:text-white">
+              <button onClick={onOpenAuth} className="hidden sm:inline-flex text-sm font-semibold text-sea-600 hover:text-sea-900 px-2 transition-colors">
                 Ingresar
               </button>
-              <button onClick={onOpenRegister} className="text-sm font-semibold text-white border border-white/30 hover:bg-white/10 px-4 py-1.5 rounded-full transition-colors">
+              <button onClick={onOpenRegister} className="btn btn-ghost btn-sm">
                 Registrarse
               </button>
             </React.Fragment>
           )}
-          <button onClick={onOpenSubscribe} className="hidden sm:inline-block bg-coral-500 hover:bg-coral-600 text-white text-sm font-bold px-5 py-2 rounded-full transition-colors shadow-lg shadow-coral-500/25">
+          <button onClick={onOpenSubscribe} className="hidden sm:inline-flex btn btn-coral btn-sm">
             Suscribirme
           </button>
-          <button onClick={() => setMobileOpen(o => !o)} className="md:hidden w-9 h-9 flex items-center justify-center text-xl" aria-label="Abrir menú">
+          <button onClick={() => setMobileOpen(o => !o)} className="md:hidden w-9 h-9 flex items-center justify-center text-xl text-sea-700" aria-label="Abrir menú">
             {mobileOpen ? '✕' : '☰'}
           </button>
         </div>
       </div>
       {mobileOpen && (
-        <nav className="md:hidden border-t border-white/10 bg-sea-950 px-6 py-3 flex flex-col gap-1">
+        <nav className="md:hidden border-t border-mist-100 bg-white px-6 py-3 flex flex-col gap-1">
           {sectionItems.map(item => (
-            <button key={item.id} onClick={() => handleSection(item.id)} className="text-left text-sea-100 font-semibold py-2">{item.label}</button>
+            <button key={item.id} onClick={() => handleSection(item.id)} className="text-left text-sea-700 font-semibold py-2">{item.label}</button>
           ))}
           {pageItems.map(item => (
-            <button key={item.id} onClick={() => handlePage(item.id)} className="text-left text-sea-100 font-semibold py-2">{item.label}</button>
+            <button key={item.id} onClick={() => handlePage(item.id)} className="text-left text-sea-700 font-semibold py-2">{item.label}</button>
           ))}
+          {!loggedIn && (
+            <button onClick={() => { setMobileOpen(false); onOpenAuth(); }} className="text-left text-sea-700 font-semibold py-2">Ingresar</button>
+          )}
         </nav>
       )}
     </header>
@@ -763,29 +859,29 @@ function Header({ loggedIn, onNav, onNavigateSection, onOpenPage, onOpenAuth, on
 
 function Hero({ onOpenSubscribe }) {
   return (
-    <section className="relative bg-sea-950 text-white overflow-hidden">
-      <div className="absolute -top-24 -left-24 w-96 h-96 rounded-full bg-sea-500/30 blur-3xl animate-aurora"></div>
-      <div className="absolute top-40 -right-32 w-[28rem] h-[28rem] rounded-full bg-coral-500/20 blur-3xl animate-aurora" style={{ animationDelay: '-7s' }}></div>
-      <div className="absolute bottom-0 left-1/3 w-80 h-80 rounded-full bg-sea-300/10 blur-3xl animate-aurora" style={{ animationDelay: '-3s' }}></div>
+    <section className="relative bg-gradient-to-b from-mist-50 via-sand-50 to-white text-sea-900 overflow-hidden">
+      <div className="absolute -top-24 -left-24 w-96 h-96 rounded-full bg-mist-200/50 blur-3xl animate-aurora"></div>
+      <div className="absolute top-40 -right-32 w-[28rem] h-[28rem] rounded-full bg-coral-200/40 blur-3xl animate-aurora" style={{ animationDelay: '-7s' }}></div>
+      <div className="absolute bottom-0 left-1/3 w-80 h-80 rounded-full bg-sea-200/30 blur-3xl animate-aurora" style={{ animationDelay: '-3s' }}></div>
 
-      <div className="hidden lg:flex absolute left-14 top-36 w-16 h-16 rounded-full bg-gradient-to-br from-sky-600 to-slate-800 border-2 border-white/20 items-center justify-center text-2xl animate-floaty shadow-xl">🌊</div>
-      <div className="hidden lg:flex absolute left-32 bottom-44 w-14 h-14 rounded-full bg-gradient-to-br from-violet-600 to-indigo-900 border-2 border-white/20 items-center justify-center text-xl animate-floaty shadow-xl" style={{ animationDelay: '-2.5s' }}>🌌</div>
-      <div className="hidden lg:flex absolute right-16 top-32 w-14 h-14 rounded-full bg-gradient-to-br from-amber-400 to-orange-600 border-2 border-white/20 items-center justify-center text-xl animate-floaty shadow-xl" style={{ animationDelay: '-4s' }}>🧭</div>
-      <div className="hidden lg:flex absolute right-36 bottom-40 w-16 h-16 rounded-full bg-gradient-to-br from-rose-400 to-pink-600 border-2 border-white/20 items-center justify-center text-2xl animate-floaty shadow-xl" style={{ animationDelay: '-1.2s' }}>💞</div>
+      <div className="hidden lg:flex absolute left-14 top-36 w-16 h-16 rounded-full bg-gradient-to-br from-sky-300 to-sea-400 border-2 border-white items-center justify-center text-2xl animate-floaty shadow-lg">🌊</div>
+      <div className="hidden lg:flex absolute left-32 bottom-44 w-14 h-14 rounded-full bg-gradient-to-br from-violet-300 to-indigo-400 border-2 border-white items-center justify-center text-xl animate-floaty shadow-lg" style={{ animationDelay: '-2.5s' }}>🌌</div>
+      <div className="hidden lg:flex absolute right-16 top-32 w-14 h-14 rounded-full bg-gradient-to-br from-amber-200 to-orange-300 border-2 border-white items-center justify-center text-xl animate-floaty shadow-lg" style={{ animationDelay: '-4s' }}>🧭</div>
+      <div className="hidden lg:flex absolute right-36 bottom-40 w-16 h-16 rounded-full bg-gradient-to-br from-rose-200 to-pink-300 border-2 border-white items-center justify-center text-2xl animate-floaty shadow-lg" style={{ animationDelay: '-1.2s' }}>💞</div>
 
       <div className="max-w-4xl mx-auto px-6 pt-24 pb-32 text-center relative z-10">
-        <p className="uppercase tracking-[0.25em] text-xs text-coral-300 font-bold mb-6 animate-fadein">Un espacio para mirar hacia adentro</p>
-        <h1 className="font-serif text-6xl md:text-7xl font-semibold mb-6 animate-fadein leading-none">Estado del Mar</h1>
-        <p className="text-lg md:text-xl text-sea-100 max-w-2xl mx-auto leading-relaxed mb-10 animate-fadein">
+        <p className="uppercase tracking-[0.25em] text-xs text-coral-600 font-bold mb-6 animate-fadein">Un espacio para mirar hacia adentro</p>
+        <h1 className="font-serif text-6xl md:text-7xl font-semibold mb-6 animate-fadein leading-none text-sea-900">Estado del Mar</h1>
+        <p className="text-lg md:text-xl text-sea-700 max-w-2xl mx-auto leading-relaxed mb-10 animate-fadein">
           Así como el mar cambia de estado según el día, nosotros también. Elegí la ventana que refleja por dónde estás pasando hoy,
           y encontrá psicoeducación, meditaciones y ejercicios pensados para acompañarte.
         </p>
-        <div className="flex flex-col sm:flex-row gap-4 justify-center animate-fadein">
-          <a href="#ventanas" className="bg-coral-500 hover:bg-coral-600 text-white font-bold px-8 py-4 rounded-full transition-colors shadow-xl shadow-coral-500/30">Ver las ventanas</a>
-          <a href="#como-funciona" className="border border-white/30 text-white font-semibold px-8 py-4 rounded-full hover:bg-white/10 transition-colors">Cómo funciona</a>
+        <div className="flex flex-col sm:flex-row gap-4 justify-center items-center animate-fadein">
+          <a href="#ventanas" className="btn btn-coral btn-lg">Ver las ventanas</a>
+          <a href="#como-funciona" className="btn btn-ghost btn-lg">Cómo funciona</a>
         </div>
       </div>
-      <div className="text-sand-50 relative z-10"><WaveDivider /></div>
+      <div className="text-white relative z-10"><WaveDivider /></div>
     </section>
   );
 }
@@ -805,9 +901,9 @@ function HowItWorks() {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
         {steps.map((s, i) => (
           <Reveal key={i}>
-            <div className="relative bg-white rounded-3xl border border-sea-100 p-8 text-center h-full shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300">
-              <span className="absolute top-4 left-6 font-serif text-5xl text-sea-100 font-semibold select-none">{i + 1}</span>
-              <div className="w-16 h-16 rounded-full bg-sea-50 text-3xl flex items-center justify-center mx-auto mb-5 relative">{s.emoji}</div>
+            <div className="group relative bg-white rounded-3xl border border-mist-100 p-8 text-center h-full shadow-sm hover:shadow-xl hover:shadow-mist-200/50 hover:-translate-y-1.5 transition-all duration-300">
+              <span className="absolute top-4 left-6 font-serif text-5xl text-mist-100 font-semibold select-none">{i + 1}</span>
+              <div className="w-16 h-16 rounded-full bg-mist-50 text-3xl flex items-center justify-center mx-auto mb-5 relative group-hover:scale-110 group-hover:animate-drift transition-transform duration-300">{s.emoji}</div>
               <h3 className="font-serif text-2xl font-semibold text-sea-900 mb-2">{s.title}</h3>
               <p className="text-sea-600 text-sm leading-relaxed">{s.text}</p>
             </div>
@@ -820,27 +916,29 @@ function HowItWorks() {
 
 function PricingSection({ price, onOpenSubscribe, onOpenPage }) {
   return (
-    <section id="precio" className="relative bg-sea-950 text-white py-24 overflow-hidden">
-      <div className="absolute -top-20 right-10 w-80 h-80 rounded-full bg-coral-500/15 blur-3xl animate-aurora"></div>
-      <div className="absolute bottom-0 -left-20 w-96 h-96 rounded-full bg-sea-500/20 blur-3xl animate-aurora" style={{ animationDelay: '-6s' }}></div>
+    <section id="precio" className="relative bg-gradient-to-b from-white via-mist-50 to-sand-50 text-sea-900 py-24 overflow-hidden">
+      <div className="absolute -top-20 right-10 w-80 h-80 rounded-full bg-coral-200/40 blur-3xl animate-aurora"></div>
+      <div className="absolute bottom-0 -left-20 w-96 h-96 rounded-full bg-mist-200/40 blur-3xl animate-aurora" style={{ animationDelay: '-6s' }}></div>
       <div className="max-w-lg mx-auto px-6 text-center relative z-10">
-        <p className="uppercase tracking-widest text-xs text-coral-300 font-bold mb-3">Membresía</p>
-        <h2 className="font-serif text-4xl md:text-5xl font-semibold mb-10">Una sola suscripción, todas las ventanas</h2>
-        <div className="bg-white/5 border border-white/15 backdrop-blur-sm rounded-3xl p-10 shadow-2xl">
-          <p className="font-serif text-6xl font-semibold mb-1">${price}<span className="text-lg font-sans text-sea-300">/mes</span></p>
-          <p className="text-xs text-sea-300 mb-8">(precio de ejemplo — se edita desde el panel de administración)</p>
-          <ul className="text-left space-y-3 text-sea-100 mb-8 max-w-xs mx-auto">
-            <li>🌊 Contenido psicoeducativo en formato de diapositivas, a tu ritmo</li>
-            <li>🌊 Meditaciones guiadas</li>
-            <li>🌊 Ejercicios prácticos en cada ventana</li>
-            <li>🌊 Nuevas ventanas sumándose con el tiempo</li>
-          </ul>
-          <button onClick={onOpenSubscribe} className="w-full bg-coral-500 hover:bg-coral-600 text-white font-bold px-7 py-4 rounded-full transition-colors shadow-xl shadow-coral-500/25">
-            Suscribirme
-          </button>
-          <p className="text-xs text-sea-300 mt-4">Podés cancelar cuando quieras.</p>
-        </div>
-        <button onClick={() => onOpenPage('faq')} className="text-sea-300 text-sm underline hover:text-white mt-8">¿Tenés dudas? Mirá las preguntas frecuentes</button>
+        <p className="uppercase tracking-widest text-xs text-coral-600 font-bold mb-3">Membresía</p>
+        <h2 className="font-serif text-4xl md:text-5xl font-semibold mb-10 text-sea-900">Una sola suscripción, todas las ventanas</h2>
+        <Reveal>
+          <div className="bg-white border border-mist-100 rounded-3xl p-10 shadow-xl shadow-mist-200/40">
+            <p className="font-serif text-6xl font-semibold mb-1 text-sea-900">${price}<span className="text-lg font-sans text-sea-500">/mes</span></p>
+            <p className="text-xs text-sea-400 mb-8">(precio de ejemplo — se edita desde el panel de administración)</p>
+            <ul className="text-left space-y-3 text-sea-700 mb-8 max-w-xs mx-auto">
+              <li>🌊 Contenido psicoeducativo en formato de diapositivas, a tu ritmo</li>
+              <li>🌊 Meditaciones guiadas</li>
+              <li>🌊 Ejercicios prácticos en cada ventana</li>
+              <li>🌊 Nuevas ventanas sumándose con el tiempo</li>
+            </ul>
+            <button onClick={onOpenSubscribe} className="btn btn-coral btn-lg btn-block">
+              Suscribirme
+            </button>
+            <p className="text-xs text-sea-400 mt-4">Podés cancelar cuando quieras.</p>
+          </div>
+        </Reveal>
+        <button onClick={() => onOpenPage('faq')} className="btn-link text-sea-500 text-sm hover:text-sea-800 mt-8 inline-block">¿Tenés dudas? Mirá las preguntas frecuentes</button>
       </div>
     </section>
   );
@@ -848,21 +946,21 @@ function PricingSection({ price, onOpenSubscribe, onOpenPage }) {
 
 function Footer({ onOpenAdmin, showAdminLink, onOpenPage }) {
   return (
-    <footer className="bg-sea-950 text-sea-300 py-16 border-t border-white/5">
+    <footer className="bg-mist-100 text-sea-600 py-16 border-t border-mist-200">
       <div className="max-w-4xl mx-auto px-6 text-center">
-        <p className="font-serif text-2xl text-white mb-5">🌊 Estado del Mar</p>
+        <p className="font-serif text-2xl text-sea-900 mb-5">🌊 Estado del Mar</p>
         <nav className="flex flex-wrap justify-center gap-x-8 gap-y-2 text-sm font-semibold mb-8">
-          <button onClick={() => onOpenPage('sobre')} className="hover:text-white transition-colors">Sobre el proyecto</button>
-          <button onClick={() => onOpenPage('faq')} className="hover:text-white transition-colors">Preguntas frecuentes</button>
-          <button onClick={() => onOpenPage('contacto')} className="hover:text-white transition-colors">Contacto</button>
+          <button onClick={() => onOpenPage('sobre')} className="btn-link hover:text-sea-900">Sobre el proyecto</button>
+          <button onClick={() => onOpenPage('faq')} className="btn-link hover:text-sea-900">Preguntas frecuentes</button>
+          <button onClick={() => onOpenPage('contacto')} className="btn-link hover:text-sea-900">Contacto</button>
         </nav>
         <p className="text-sm leading-relaxed max-w-xl mx-auto mb-6">
           Estado del Mar ofrece contenido psicoeducativo, filosófico y espiritual con fines orientativos. No reemplaza un tratamiento
           ni la atención de un profesional de salud mental. Si estás atravesando una crisis o necesitás ayuda inmediata, por favor
           contactá a un profesional o a una línea de ayuda de tu país.
         </p>
-        {showAdminLink && <button onClick={onOpenAdmin} className="text-xs text-sea-500 underline hover:text-sea-300">Panel de administración</button>}
-        <p className="text-xs text-sea-600 mt-8">Prototipo navegable — pagos reales todavía no conectados.</p>
+        {showAdminLink && <button onClick={onOpenAdmin} className="btn-link text-xs text-sea-500 hover:text-sea-700">Panel de administración</button>}
+        <p className="text-xs text-sea-400 mt-8">Prototipo navegable — pagos reales todavía no conectados.</p>
       </div>
     </footer>
   );
@@ -906,7 +1004,7 @@ function AuthModal({ intent, initialMode, onClose, onAuthed }) {
           <p className="text-4xl mb-4">📬</p>
           <h3 className="font-serif text-2xl font-semibold text-sea-900 mb-3">Confirmá tu email</h3>
           <p className="text-sea-600 mb-6">Te mandamos un link de confirmación a {email}. Abrilo y después volvé acá para iniciar sesión.</p>
-          <button onClick={onClose} className="w-full bg-sea-700 hover:bg-sea-800 text-white font-semibold px-7 py-3.5 rounded-full transition-colors">Entendido</button>
+          <button onClick={onClose} className="btn btn-primary btn-block">Entendido</button>
         </div>
       </Modal>
     );
@@ -930,26 +1028,26 @@ function AuthModal({ intent, initialMode, onClose, onAuthed }) {
           {mode === 'signup' && (
             <div>
               <label className="text-sm font-semibold text-sea-700 block mb-1">Nombre</label>
-              <input value={name} onChange={e => setName(e.target.value)} className="w-full border border-sea-200 rounded-xl px-4 py-2.5 focus:outline-none focus:border-sea-500" placeholder="Tu nombre" />
+              <input value={name} onChange={e => setName(e.target.value)} className="w-full border border-mist-200 rounded-xl px-4 py-2.5 focus:outline-none focus:border-mist-400 focus:ring-4 focus:ring-mist-100 transition-all" placeholder="Tu nombre" />
             </div>
           )}
           <div>
             <label className="text-sm font-semibold text-sea-700 block mb-1">Email</label>
-            <input value={email} onChange={e => setEmail(e.target.value)} type="email" className="w-full border border-sea-200 rounded-xl px-4 py-2.5 focus:outline-none focus:border-sea-500" placeholder="tu@email.com" />
+            <input value={email} onChange={e => setEmail(e.target.value)} type="email" className="w-full border border-mist-200 rounded-xl px-4 py-2.5 focus:outline-none focus:border-mist-400 focus:ring-4 focus:ring-mist-100 transition-all" placeholder="tu@email.com" />
           </div>
           <div>
             <label className="text-sm font-semibold text-sea-700 block mb-1">Contraseña</label>
-            <input value={password} onChange={e => setPassword(e.target.value)} type="password" className="w-full border border-sea-200 rounded-xl px-4 py-2.5 focus:outline-none focus:border-sea-500" placeholder="••••••••" />
+            <input value={password} onChange={e => setPassword(e.target.value)} type="password" className="w-full border border-mist-200 rounded-xl px-4 py-2.5 focus:outline-none focus:border-mist-400 focus:ring-4 focus:ring-mist-100 transition-all" placeholder="••••••••" />
           </div>
         </div>
         {error && <p className="text-sm text-red-600 mt-3">{error}</p>}
-        <button onClick={handleSubmit} disabled={loading} className="w-full bg-sea-700 hover:bg-sea-800 text-white font-semibold px-7 py-3.5 rounded-full mt-6 transition-colors disabled:opacity-50">
+        <button onClick={handleSubmit} disabled={loading} className="btn btn-primary btn-block mt-6 disabled:opacity-50">
           {loading ? 'Un momento…' : (mode === 'signup' ? (intent === 'subscribe' ? 'Crear cuenta y suscribirme' : 'Crear cuenta') : 'Iniciar sesión')}
         </button>
-        <button onClick={() => { setMode(mode === 'signup' ? 'login' : 'signup'); setError(''); }} className="w-full text-sea-600 text-sm mt-4 hover:text-sea-800 underline">
+        <button onClick={() => { setMode(mode === 'signup' ? 'login' : 'signup'); setError(''); }} className="btn-link w-full text-sea-600 text-sm mt-4 hover:text-sea-800 inline-block">
           {mode === 'signup' ? '¿Ya tenés cuenta? Iniciá sesión' : '¿No tenés cuenta? Registrate'}
         </button>
-        <button onClick={onClose} className="w-full text-sea-500 text-sm mt-3 hover:text-sea-700">Cancelar</button>
+        <button onClick={onClose} className="w-full text-sea-500 text-sm mt-3 hover:text-sea-700 transition-colors">Cancelar</button>
       </div>
     </Modal>
   );
@@ -979,7 +1077,7 @@ function ProfilePanel({ email, profile, subscribed, subscribeDate, onSave, onSub
 
   return (
     <div className="min-h-screen bg-sand-50">
-      <div className="bg-sea-900 text-white">
+      <div className="bg-gradient-to-r from-mist-500 to-sea-600 text-white">
         <div className="max-w-3xl mx-auto px-6 py-8 flex items-center justify-between">
           <div>
             <h1 className="font-serif text-3xl font-semibold">Mi perfil</h1>
@@ -1005,12 +1103,12 @@ function ProfilePanel({ email, profile, subscribed, subscribeDate, onSave, onSub
           </div>
 
           {!subscribed && (
-            <button onClick={onSubscribe} className="bg-sea-700 hover:bg-sea-800 text-white font-semibold px-6 py-2.5 rounded-full transition-colors">
+            <button onClick={onSubscribe} className="btn btn-primary">
               Suscribirme
             </button>
           )}
           {subscribed && !confirming && (
-            <button onClick={() => setConfirming(true)} className="text-red-600 border border-red-200 hover:bg-red-50 font-semibold px-6 py-2.5 rounded-full transition-colors">
+            <button onClick={() => setConfirming(true)} className="btn btn-danger">
               Cancelar suscripción
             </button>
           )}
@@ -1018,8 +1116,8 @@ function ProfilePanel({ email, profile, subscribed, subscribeDate, onSave, onSub
             <div className="space-y-3">
               <p className="text-sm text-sea-600">¿Confirmás que querés cancelar? Vas a perder el acceso a las ventanas.</p>
               <div className="flex flex-wrap gap-3">
-                <button onClick={onCancelSubscription} className="bg-red-600 hover:bg-red-700 text-white font-semibold px-6 py-2.5 rounded-full transition-colors">Sí, cancelar</button>
-                <button onClick={() => setConfirming(false)} className="text-sea-500 font-semibold px-6 py-2.5">Volver</button>
+                <button onClick={onCancelSubscription} className="btn btn-danger-solid">Sí, cancelar</button>
+                <button onClick={() => setConfirming(false)} className="btn btn-ghost">Volver</button>
               </div>
             </div>
           )}
@@ -1030,38 +1128,38 @@ function ProfilePanel({ email, profile, subscribed, subscribeDate, onSave, onSub
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <label className="text-sm font-semibold text-sea-700 block mb-1">Nombre completo</label>
-              <input value={fullName} onChange={e => setFullName(e.target.value)} className="w-full border border-sea-200 rounded-xl px-4 py-2.5" />
+              <input value={fullName} onChange={e => setFullName(e.target.value)} className="w-full border border-mist-200 rounded-xl px-4 py-2.5 focus:outline-none focus:border-mist-400 focus:ring-4 focus:ring-mist-100 transition-all" />
             </div>
             <div>
               <label className="text-sm font-semibold text-sea-700 block mb-1">Teléfono</label>
-              <input value={phone} onChange={e => setPhone(e.target.value)} className="w-full border border-sea-200 rounded-xl px-4 py-2.5" placeholder="+54 9 ..." />
+              <input value={phone} onChange={e => setPhone(e.target.value)} className="w-full border border-mist-200 rounded-xl px-4 py-2.5 focus:outline-none focus:border-mist-400 focus:ring-4 focus:ring-mist-100 transition-all" placeholder="+54 9 ..." />
             </div>
             <div>
               <label className="text-sm font-semibold text-sea-700 block mb-1">País</label>
-              <input value={country} onChange={e => setCountry(e.target.value)} className="w-full border border-sea-200 rounded-xl px-4 py-2.5" placeholder="Argentina" />
+              <input value={country} onChange={e => setCountry(e.target.value)} className="w-full border border-mist-200 rounded-xl px-4 py-2.5 focus:outline-none focus:border-mist-400 focus:ring-4 focus:ring-mist-100 transition-all" placeholder="Argentina" />
             </div>
             <div>
               <label className="text-sm font-semibold text-sea-700 block mb-1">Ciudad</label>
-              <input value={city} onChange={e => setCity(e.target.value)} className="w-full border border-sea-200 rounded-xl px-4 py-2.5" />
+              <input value={city} onChange={e => setCity(e.target.value)} className="w-full border border-mist-200 rounded-xl px-4 py-2.5 focus:outline-none focus:border-mist-400 focus:ring-4 focus:ring-mist-100 transition-all" />
             </div>
             <div>
               <label className="text-sm font-semibold text-sea-700 block mb-1">Fecha de nacimiento</label>
-              <input type="date" value={birthDate || ''} onChange={e => setBirthDate(e.target.value)} className="w-full border border-sea-200 rounded-xl px-4 py-2.5" />
+              <input type="date" value={birthDate || ''} onChange={e => setBirthDate(e.target.value)} className="w-full border border-mist-200 rounded-xl px-4 py-2.5 focus:outline-none focus:border-mist-400 focus:ring-4 focus:ring-mist-100 transition-all" />
             </div>
           </div>
           <div className="mt-4">
             <label className="text-sm font-semibold text-sea-700 block mb-1">¿Qué te trae a Estado del Mar?</label>
-            <textarea value={motivation} onChange={e => setMotivation(e.target.value)} rows="3" className="w-full border border-sea-200 rounded-xl px-4 py-2.5" />
+            <textarea value={motivation} onChange={e => setMotivation(e.target.value)} rows="3" className="w-full border border-mist-200 rounded-xl px-4 py-2.5 focus:outline-none focus:border-mist-400 focus:ring-4 focus:ring-mist-100 transition-all" />
           </div>
           <div className="flex items-center gap-4 mt-6">
-            <button onClick={handleSave} disabled={saving} className="bg-sea-700 hover:bg-sea-800 text-white font-semibold px-6 py-2.5 rounded-full transition-colors disabled:opacity-50">
+            <button onClick={handleSave} disabled={saving} className="btn btn-primary disabled:opacity-50">
               {saving ? 'Guardando…' : 'Guardar cambios'}
             </button>
-            {savedMsg && <span className="text-sm text-sea-600">{savedMsg}</span>}
+            {savedMsg && <span className="text-sm text-mist-600 font-semibold animate-fadein">{savedMsg}</span>}
           </div>
         </div>
 
-        <button onClick={onSignOut} className="text-sea-500 text-sm hover:text-sea-700 underline">Cerrar sesión</button>
+        <button onClick={onSignOut} className="btn-link text-sea-500 text-sm hover:text-sea-700 inline-block">Cerrar sesión</button>
       </div>
     </div>
   );
@@ -1084,7 +1182,7 @@ function TopicDetail({ topic, subscribed, onBack, onOpenSubscribe }) {
     <div className="min-h-screen">
       <div className={"bg-gradient-to-br " + topic.gradient + " text-white"}>
         <div className="max-w-4xl mx-auto px-6 pt-10 pb-16">
-          <button onClick={onBack} className="text-white/80 hover:text-white text-sm font-semibold mb-8">← Volver a las ventanas</button>
+          <button onClick={onBack} className="text-white/80 hover:text-white text-sm font-semibold mb-8 inline-flex items-center gap-1 hover:-translate-x-1 transition-transform duration-200">← Volver a las ventanas</button>
           <div className="flex items-center gap-5">
             <div className="w-20 h-20 rounded-full bg-white/15 flex items-center justify-center text-4xl border-2 border-white/30">{topic.emoji}</div>
             <div>
@@ -1100,7 +1198,7 @@ function TopicDetail({ topic, subscribed, onBack, onOpenSubscribe }) {
           <p className="text-5xl mb-6">🔒</p>
           <h2 className="font-serif text-2xl md:text-3xl text-sea-900 mb-3">Este contenido es para suscriptores</h2>
           <p className="text-sea-600 mb-8">Sumate a Estado del Mar para acceder al check-in, la psicoeducación, la meditación y el ejercicio práctico de esta ventana — y de todas las demás.</p>
-          <button onClick={onOpenSubscribe} className="bg-sea-700 hover:bg-sea-800 text-white font-semibold px-8 py-3.5 rounded-full transition-colors">
+          <button onClick={onOpenSubscribe} className="btn btn-coral btn-lg">
             Suscribirme
           </button>
         </div>
@@ -1109,7 +1207,7 @@ function TopicDetail({ topic, subscribed, onBack, onOpenSubscribe }) {
           <div className="flex flex-wrap justify-center gap-2 mb-10">
             {tabs.map(t => (
               <button key={t.id} onClick={() => setTab(t.id)}
-                className={"px-5 py-2.5 rounded-full text-sm font-semibold transition-colors " + (tab === t.id ? "bg-sea-700 text-white" : "bg-sea-50 text-sea-600 hover:bg-sea-100")}>
+                className={"px-5 py-2.5 rounded-full text-sm font-semibold transition-all duration-200 hover:-translate-y-0.5 " + (tab === t.id ? "bg-gradient-to-r from-mist-500 to-sea-600 text-white shadow-md shadow-mist-200" : "bg-mist-50 text-sea-600 hover:bg-mist-100")}>
                 {t.label}
               </button>
             ))}
@@ -1171,11 +1269,11 @@ function TopicEditForm({ topic, onSave, onCancel }) {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div>
           <label className="text-sm font-semibold text-sea-700 block mb-1">Título</label>
-          <input value={title} onChange={e => setTitle(e.target.value)} className="w-full border border-sea-200 rounded-xl px-4 py-2.5" placeholder="Ej: Autoestima" />
+          <input value={title} onChange={e => setTitle(e.target.value)} className="w-full border border-mist-200 rounded-xl px-4 py-2.5 focus:outline-none focus:border-mist-400 focus:ring-4 focus:ring-mist-100 transition-all" placeholder="Ej: Autoestima" />
         </div>
         <div>
           <label className="text-sm font-semibold text-sea-700 block mb-1">Ícono (emoji)</label>
-          <select value={emoji} onChange={e => setEmoji(e.target.value)} className="w-full border border-sea-200 rounded-xl px-4 py-2.5">
+          <select value={emoji} onChange={e => setEmoji(e.target.value)} className="w-full border border-mist-200 rounded-xl px-4 py-2.5 focus:outline-none focus:border-mist-400 focus:ring-4 focus:ring-mist-100 transition-all">
             {EMOJI_PRESETS.map(em => <option key={em} value={em}>{em}</option>)}
           </select>
         </div>
@@ -1192,7 +1290,7 @@ function TopicEditForm({ topic, onSave, onCancel }) {
       </div>
       <div>
         <label className="text-sm font-semibold text-sea-700 block mb-1">Descripción corta</label>
-        <textarea value={description} onChange={e => setDescription(e.target.value)} rows="2" className="w-full border border-sea-200 rounded-xl px-4 py-2.5" />
+        <textarea value={description} onChange={e => setDescription(e.target.value)} rows="2" className="w-full border border-mist-200 rounded-xl px-4 py-2.5 focus:outline-none focus:border-mist-400 focus:ring-4 focus:ring-mist-100 transition-all" />
       </div>
       <div>
         <label className="text-sm font-semibold text-sea-700 block mb-1">Diapositivas de contenido (una por línea, formato "Título :: Texto")</label>
@@ -1201,28 +1299,28 @@ function TopicEditForm({ topic, onSave, onCancel }) {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <div>
           <label className="text-sm font-semibold text-sea-700 block mb-1">Título meditación</label>
-          <input value={medTitle} onChange={e => setMedTitle(e.target.value)} className="w-full border border-sea-200 rounded-xl px-4 py-2.5" />
+          <input value={medTitle} onChange={e => setMedTitle(e.target.value)} className="w-full border border-mist-200 rounded-xl px-4 py-2.5 focus:outline-none focus:border-mist-400 focus:ring-4 focus:ring-mist-100 transition-all" />
         </div>
         <div>
           <label className="text-sm font-semibold text-sea-700 block mb-1">Duración</label>
-          <input value={medDuration} onChange={e => setMedDuration(e.target.value)} className="w-full border border-sea-200 rounded-xl px-4 py-2.5" placeholder="6 min" />
+          <input value={medDuration} onChange={e => setMedDuration(e.target.value)} className="w-full border border-mist-200 rounded-xl px-4 py-2.5 focus:outline-none focus:border-mist-400 focus:ring-4 focus:ring-mist-100 transition-all" placeholder="6 min" />
         </div>
         <div>
           <label className="text-sm font-semibold text-sea-700 block mb-1">Descripción meditación</label>
-          <input value={medDescription} onChange={e => setMedDescription(e.target.value)} className="w-full border border-sea-200 rounded-xl px-4 py-2.5" />
+          <input value={medDescription} onChange={e => setMedDescription(e.target.value)} className="w-full border border-mist-200 rounded-xl px-4 py-2.5 focus:outline-none focus:border-mist-400 focus:ring-4 focus:ring-mist-100 transition-all" />
         </div>
       </div>
       <div>
         <label className="text-sm font-semibold text-sea-700 block mb-1">Título del ejercicio</label>
-        <input value={exerciseTitle} onChange={e => setExerciseTitle(e.target.value)} className="w-full border border-sea-200 rounded-xl px-4 py-2.5" />
+        <input value={exerciseTitle} onChange={e => setExerciseTitle(e.target.value)} className="w-full border border-mist-200 rounded-xl px-4 py-2.5 focus:outline-none focus:border-mist-400 focus:ring-4 focus:ring-mist-100 transition-all" />
       </div>
       <div>
         <label className="text-sm font-semibold text-sea-700 block mb-1">Pasos del ejercicio (uno por línea)</label>
-        <textarea value={stepsText} onChange={e => setStepsText(e.target.value)} rows="4" className="w-full border border-sea-200 rounded-xl px-4 py-2.5" />
+        <textarea value={stepsText} onChange={e => setStepsText(e.target.value)} rows="4" className="w-full border border-mist-200 rounded-xl px-4 py-2.5 focus:outline-none focus:border-mist-400 focus:ring-4 focus:ring-mist-100 transition-all" />
       </div>
       <div className="flex gap-3 pt-2">
-        <button onClick={handleSave} className="bg-sea-700 hover:bg-sea-800 text-white font-semibold px-6 py-2.5 rounded-full transition-colors">Guardar</button>
-        <button onClick={onCancel} className="text-sea-500 hover:text-sea-700 font-semibold px-6 py-2.5">Cancelar</button>
+        <button onClick={handleSave} className="btn btn-primary">Guardar</button>
+        <button onClick={onCancel} className="btn btn-ghost">Cancelar</button>
       </div>
     </div>
   );
@@ -1258,13 +1356,13 @@ function AdminPanel({ topics, price, setPrice, onExit, onSaveTopic, onDeleteTopi
 
   return (
     <div className="min-h-screen bg-sand-50">
-      <div className="bg-sea-900 text-white">
+      <div className="bg-gradient-to-r from-mist-500 to-sea-600 text-white">
         <div className="max-w-5xl mx-auto px-6 py-8 flex items-center justify-between">
           <div>
             <h1 className="font-serif text-3xl font-semibold">Panel de administración</h1>
-            <p className="text-sea-300 text-sm mt-1">Modo demo — los cambios se guardan solo en esta sesión del navegador.</p>
+            <p className="text-white/80 text-sm mt-1">Modo demo — los cambios se guardan solo en esta sesión del navegador.</p>
           </div>
-          <button onClick={onExit} className="text-sea-200 hover:text-white text-sm font-semibold">Salir →</button>
+          <button onClick={onExit} className="btn-link text-white/90 hover:text-white text-sm font-semibold">Salir →</button>
         </div>
       </div>
 
@@ -1274,11 +1372,11 @@ function AdminPanel({ topics, price, setPrice, onExit, onSaveTopic, onDeleteTopi
           <label className="text-sm font-semibold text-sea-700 block mb-1">Precio de la suscripción mensual</label>
           <div className="flex items-center gap-2 max-w-xs">
             <span className="text-sea-500">$</span>
-            <input value={price} onChange={e => setPrice(e.target.value)} className="w-full border border-sea-200 rounded-xl px-4 py-2.5" />
+            <input value={price} onChange={e => setPrice(e.target.value)} className="w-full border border-mist-200 rounded-xl px-4 py-2.5 focus:outline-none focus:border-mist-400 focus:ring-4 focus:ring-mist-100 transition-all" />
             <span className="text-sea-500">/mes</span>
           </div>
-          <div className="mt-6 pt-6 border-t border-sea-100">
-            <button onClick={seedInitial} disabled={seeding} className="text-sm text-sea-600 underline hover:text-sea-800 disabled:opacity-50">
+          <div className="mt-6 pt-6 border-t border-mist-100">
+            <button onClick={seedInitial} disabled={seeding} className="btn-link text-sm text-sea-600 hover:text-sea-800 disabled:opacity-50 inline-block">
               {seeding ? 'Cargando…' : 'Cargar las 10 ventanas iniciales en la base (una sola vez)'}
             </button>
           </div>
@@ -1294,20 +1392,20 @@ function AdminPanel({ topics, price, setPrice, onExit, onSaveTopic, onDeleteTopi
           <div>
             <div className="flex items-center justify-between mb-5">
               <h3 className="font-serif text-xl text-sea-900">Ventanas ({topics.length})</h3>
-              <button onClick={() => setCreating(true)} className="bg-sea-700 hover:bg-sea-800 text-white font-semibold px-5 py-2.5 rounded-full text-sm transition-colors">
+              <button onClick={() => setCreating(true)} className="btn btn-primary btn-sm">
                 + Agregar ventana
               </button>
             </div>
             <div className="space-y-3">
               {topics.map(t => (
-                <div key={t.id} className="bg-white rounded-2xl border border-sea-100 p-4 flex items-center gap-4">
+                <div key={t.id} className="bg-white rounded-2xl border border-mist-100 p-4 flex items-center gap-4 hover:shadow-md hover:shadow-mist-100 transition-shadow">
                   <div className={"w-12 h-12 rounded-full bg-gradient-to-br " + t.gradient + " flex items-center justify-center text-xl flex-shrink-0"}>{t.emoji}</div>
                   <div className="flex-1 min-w-0">
                     <p className="font-semibold text-sea-900">{t.title}</p>
                     <p className="text-sea-500 text-sm truncate">{t.description}</p>
                   </div>
-                  <button onClick={() => setEditingId(t.id)} className="text-sea-600 hover:text-sea-900 text-sm font-semibold px-3 py-1.5">Editar</button>
-                  <button onClick={() => deleteTopic(t.id)} className="text-red-500 hover:text-red-700 text-sm font-semibold px-3 py-1.5">Eliminar</button>
+                  <button onClick={() => setEditingId(t.id)} className="btn-link text-sea-600 hover:text-sea-900 text-sm font-semibold px-3 py-1.5">Editar</button>
+                  <button onClick={() => deleteTopic(t.id)} className="btn-link text-red-500 hover:text-red-700 text-sm font-semibold px-3 py-1.5">Eliminar</button>
                 </div>
               ))}
             </div>
@@ -1325,15 +1423,15 @@ const WHATSAPP_MESSAGE = 'Hola! Vengo del sitio de Estado del Mar y quería hace
 
 function PageBanner({ overline, title, subtitle }) {
   return (
-    <div className="relative bg-sea-950 text-white overflow-hidden">
-      <div className="absolute -top-20 -right-20 w-80 h-80 rounded-full bg-coral-500/15 blur-3xl animate-aurora"></div>
-      <div className="absolute bottom-0 -left-24 w-96 h-96 rounded-full bg-sea-500/20 blur-3xl animate-aurora" style={{ animationDelay: '-5s' }}></div>
+    <div className="relative bg-gradient-to-b from-mist-50 via-sand-50 to-white text-sea-900 overflow-hidden">
+      <div className="absolute -top-20 -right-20 w-80 h-80 rounded-full bg-coral-200/40 blur-3xl animate-aurora"></div>
+      <div className="absolute bottom-0 -left-24 w-96 h-96 rounded-full bg-mist-200/40 blur-3xl animate-aurora" style={{ animationDelay: '-5s' }}></div>
       <div className="max-w-3xl mx-auto px-6 pt-16 pb-20 text-center relative z-10">
-        <p className="uppercase tracking-[0.25em] text-xs text-coral-300 font-bold mb-4">{overline}</p>
-        <h1 className="font-serif text-4xl md:text-5xl font-semibold mb-4">{title}</h1>
-        {subtitle && <p className="text-sea-100 leading-relaxed max-w-xl mx-auto">{subtitle}</p>}
+        <p className="uppercase tracking-[0.25em] text-xs text-coral-600 font-bold mb-4">{overline}</p>
+        <h1 className="font-serif text-4xl md:text-5xl font-semibold mb-4 text-sea-900">{title}</h1>
+        {subtitle && <p className="text-sea-700 leading-relaxed max-w-xl mx-auto">{subtitle}</p>}
       </div>
-      <div className="text-sand-50 relative z-10"><WaveDivider /></div>
+      <div className="text-white relative z-10"><WaveDivider /></div>
     </div>
   );
 }
@@ -1375,8 +1473,8 @@ function SobrePage({ onOpenSubscribe, onOpenPage }) {
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
           {values.map((v, i) => (
             <Reveal key={i}>
-              <div className="bg-white rounded-3xl border border-sea-100 p-6 text-center h-full shadow-sm">
-                <p className="text-3xl mb-3">{v.emoji}</p>
+              <div className="group bg-white rounded-3xl border border-mist-100 p-6 text-center h-full shadow-sm hover:shadow-xl hover:shadow-mist-200/50 hover:-translate-y-1.5 transition-all duration-300">
+                <p className="text-3xl mb-3 group-hover:scale-110 group-hover:animate-drift transition-transform duration-300">{v.emoji}</p>
                 <h3 className="font-serif text-xl font-semibold text-sea-900 mb-2">{v.title}</h3>
                 <p className="text-sea-600 text-sm leading-relaxed">{v.text}</p>
               </div>
@@ -1384,12 +1482,15 @@ function SobrePage({ onOpenSubscribe, onOpenPage }) {
           ))}
         </div>
         <Reveal>
-          <div className="bg-sea-900 text-white rounded-3xl p-8 md:p-10 text-center">
-            <h3 className="font-serif text-2xl md:text-3xl mb-3">¿Te resuena?</h3>
-            <p className="text-sea-200 mb-6 max-w-md mx-auto">Una sola suscripción abre todas las ventanas, a tu propio ritmo.</p>
-            <div className="flex flex-col sm:flex-row gap-3 justify-center">
-              <button onClick={onOpenSubscribe} className="bg-coral-500 hover:bg-coral-600 text-white font-bold px-7 py-3 rounded-full transition-colors">Suscribirme</button>
-              <button onClick={() => onOpenPage('contacto')} className="border border-white/30 text-white font-semibold px-7 py-3 rounded-full hover:bg-white/10 transition-colors">Hacer una consulta</button>
+          <div className="relative overflow-hidden bg-gradient-to-br from-mist-400 to-sea-600 text-white rounded-3xl p-8 md:p-10 text-center shadow-xl shadow-mist-200/50">
+            <div className="absolute -top-10 -right-10 w-48 h-48 rounded-full bg-white/10 blur-2xl animate-aurora"></div>
+            <div className="relative z-10">
+              <h3 className="font-serif text-2xl md:text-3xl mb-3">¿Te resuena?</h3>
+              <p className="text-white/90 mb-6 max-w-md mx-auto">Una sola suscripción abre todas las ventanas, a tu propio ritmo.</p>
+              <div className="flex flex-col sm:flex-row gap-3 justify-center items-center">
+                <button onClick={onOpenSubscribe} className="btn btn-coral">Suscribirme</button>
+                <button onClick={() => onOpenPage('contacto')} className="btn btn-ondark">Hacer una consulta</button>
+              </div>
             </div>
           </div>
         </Reveal>
@@ -1400,10 +1501,10 @@ function SobrePage({ onOpenSubscribe, onOpenPage }) {
 
 function FaqItem({ q, a, open, onToggle }) {
   return (
-    <div className="bg-white rounded-2xl border border-sea-100 overflow-hidden shadow-sm">
+    <div className={"bg-white rounded-2xl border overflow-hidden shadow-sm transition-all duration-300 " + (open ? "border-mist-300 shadow-md shadow-mist-100" : "border-mist-100 hover:border-mist-200")}>
       <button onClick={onToggle} className="w-full flex items-center justify-between gap-4 px-6 py-5 text-left">
         <span className="font-semibold text-sea-900">{q}</span>
-        <span className={"text-coral-500 text-2xl leading-none transition-transform duration-200 " + (open ? "rotate-45" : "")}>+</span>
+        <span className={"text-coral-500 text-2xl leading-none transition-transform duration-300 " + (open ? "rotate-45" : "")}>+</span>
       </button>
       {open && <p className="px-6 pb-5 text-sea-600 leading-relaxed animate-fadein">{a}</p>}
     </div>
@@ -1433,7 +1534,7 @@ function FaqPage({ onOpenPage }) {
         </div>
         <div className="text-center mt-12">
           <p className="text-sea-600 mb-4">¿No encontraste lo que buscabas?</p>
-          <button onClick={() => onOpenPage('contacto')} className="bg-sea-800 hover:bg-sea-900 text-white font-semibold px-7 py-3 rounded-full transition-colors">Ir a contacto</button>
+          <button onClick={() => onOpenPage('contacto')} className="btn btn-primary">Ir a contacto</button>
         </div>
       </div>
     </div>
@@ -1451,20 +1552,20 @@ function ContactoPage({ onOpenPage }) {
       />
       <div className="max-w-xl mx-auto px-6 py-16 space-y-6">
         <Reveal>
-          <div className="bg-white rounded-3xl border border-sea-100 p-8 md:p-10 text-center shadow-sm">
+          <div className="bg-white rounded-3xl border border-mist-100 p-8 md:p-10 text-center shadow-sm">
             <p className="text-4xl mb-4">💬</p>
             <h2 className="font-serif text-2xl md:text-3xl text-sea-900 mb-3">Escribinos por WhatsApp</h2>
             <p className="text-sea-600 mb-8">Es la forma más directa de llegar a nosotros. Respondemos generalmente dentro de las 48 horas.</p>
-            <a href={waLink} target="_blank" rel="noreferrer" className="inline-block bg-emerald-500 hover:bg-emerald-600 text-white font-bold px-8 py-4 rounded-full transition-colors shadow-xl shadow-emerald-500/25">
-              Abrir WhatsApp
+            <a href={waLink} target="_blank" rel="noreferrer" className="btn btn-whatsapp btn-lg">
+              <span>Abrir WhatsApp</span>
             </a>
             <p className="text-xs text-sea-400 mt-4">Se abre con un mensaje ya escrito — podés editarlo antes de enviar.</p>
           </div>
         </Reveal>
         <Reveal>
-          <div className="bg-sea-50 border border-sea-100 rounded-3xl p-6 md:p-8 text-center">
+          <div className="bg-mist-50 border border-mist-100 rounded-3xl p-6 md:p-8 text-center">
             <p className="text-sea-700 mb-4">¿Tu duda es sobre la suscripción o el contenido? Puede que ya esté respondida.</p>
-            <button onClick={() => onOpenPage('faq')} className="text-sea-800 font-semibold underline hover:text-sea-950">Ver preguntas frecuentes</button>
+            <button onClick={() => onOpenPage('faq')} className="btn-link text-sea-800 font-semibold hover:text-sea-950 inline-block">Ver preguntas frecuentes</button>
           </div>
         </Reveal>
       </div>
