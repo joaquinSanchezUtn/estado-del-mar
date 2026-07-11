@@ -184,8 +184,8 @@
   .nav-link-active { color: #3f8379; }
   .nav-link-active::after { left: .8rem; right: .8rem; }
 
-  .nav-enter { opacity: 0; transform: translateY(-8px); animation: navdrop .5s cubic-bezier(.22,.61,.36,1) forwards; }
-  @keyframes navdrop { to { opacity: 1; transform: none; } }
+  .nav-enter { opacity: 0; animation: navdrop .6s ease-out forwards; }
+  @keyframes navdrop { 0% { opacity: 0; transform: translateY(-3px); } 100% { opacity: 1; transform: translateY(0); } }
 
   .logo-wave { display: inline-block; transition: transform .4s cubic-bezier(.34,1.56,.64,1); }
   .logo-link:hover .logo-wave { transform: rotate(-12deg) scale(1.15); }
@@ -625,6 +625,13 @@ function Lock({ className }) {
 }
 
 function Modal({ onClose, children, maxW }) {
+  React.useEffect(() => {
+    const onKey = e => { if (e.key === 'Escape') onClose(); };
+    window.addEventListener('keydown', onKey);
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => { window.removeEventListener('keydown', onKey); document.body.style.overflow = prev; };
+  }, [onClose]);
   return (
     <div className="fixed inset-0 z-50 bg-sea-900/40 backdrop-blur-sm flex items-center justify-center p-4 animate-fadein" onClick={onClose}>
       <div onClick={e => e.stopPropagation()} className={"bg-white rounded-3xl shadow-2xl w-full max-h-[90vh] overflow-y-auto animate-fadein " + (maxW || "max-w-md")}>
@@ -979,7 +986,7 @@ function Header({ loggedIn, subscribed, onNav, onNavigateSection, onOpenPage, on
               key={item.id}
               onClick={() => item.kind === 'section' ? handleSection(item.id) : handlePage(item.id)}
               className="nav-link nav-enter hover:text-sea-900"
-              style={{ animationDelay: (idx * 60) + 'ms' }}>
+              style={{ animationDelay: (idx * 35) + 'ms' }}>
               {item.label}
             </button>
           ))}
@@ -1829,13 +1836,13 @@ function FaqPage({ onOpenPage }) {
 function ContactoPage({ onOpenPage }) {
   const waLink = 'https://wa.me/' + WHATSAPP_NUMBER + '?text=' + encodeURIComponent(WHATSAPP_MESSAGE);
   return (
-    <div className="bg-sand-50 min-h-screen">
+    <div className="bg-sand-50">
       <PageBanner
         overline="Contacto"
         title="Estamos del otro lado"
         subtitle="Si tenés una consulta sobre el contenido, la suscripción o cualquier otra cosa, escribinos con confianza."
       />
-      <div className="max-w-xl mx-auto px-6 pb-20 -mt-6 space-y-5 relative z-10">
+      <div className="max-w-xl mx-auto px-6 pb-14 -mt-6 space-y-5 relative z-10">
         <Reveal>
           <div className="relative bg-white rounded-3xl border border-mist-100 p-8 md:p-10 text-center shadow-xl shadow-mist-200/40 overflow-hidden">
             <div className="absolute inset-x-0 top-0 h-1.5 bg-gradient-to-r from-emerald-300 via-emerald-400 to-emerald-500"></div>
@@ -2070,14 +2077,16 @@ function App() {
 
   if (view === 'sobre' || view === 'faq' || view === 'contacto') {
     return (
-      <div key={view} className="view-anim">
+      <React.Fragment>
         {headerEl}
-        {view === 'sobre' && <SobrePage subscribed={subscribed} onOpenSubscribe={openSubscribeFlow} onOpenPage={openPage} />}
-        {view === 'faq' && <FaqPage onOpenPage={openPage} />}
-        {view === 'contacto' && <ContactoPage onOpenPage={openPage} />}
-        <Footer onOpenAdmin={() => setView('admin')} showAdminLink={isAdmin} onOpenPage={openPage} />
+        <div key={view} className="view-anim">
+          {view === 'sobre' && <SobrePage subscribed={subscribed} onOpenSubscribe={openSubscribeFlow} onOpenPage={openPage} />}
+          {view === 'faq' && <FaqPage onOpenPage={openPage} />}
+          {view === 'contacto' && <ContactoPage onOpenPage={openPage} />}
+          <Footer onOpenAdmin={() => setView('admin')} showAdminLink={isAdmin} onOpenPage={openPage} />
+        </div>
         {overlays}
-      </div>
+      </React.Fragment>
     );
   }
 
@@ -2085,25 +2094,29 @@ function App() {
     const topic = topics.find(t => t.id === activeTopicId);
     if (!topic) { goHome(); return null; }
     return (
-      <div key={'detail-' + topic.id} className="view-anim">
+      <React.Fragment>
         {headerEl}
-        <TopicDetail topic={topic} subscribed={subscribed} onBack={goHome} onOpenSubscribe={openSubscribeFlow} />
-        <Footer onOpenAdmin={() => setView('admin')} showAdminLink={isAdmin} onOpenPage={openPage} />
+        <div key={'detail-' + topic.id} className="view-anim">
+          <TopicDetail topic={topic} subscribed={subscribed} onBack={goHome} onOpenSubscribe={openSubscribeFlow} />
+          <Footer onOpenAdmin={() => setView('admin')} showAdminLink={isAdmin} onOpenPage={openPage} />
+        </div>
         {overlays}
-      </div>
+      </React.Fragment>
     );
   }
 
   return (
-    <div key="home" className="view-anim">
+    <React.Fragment>
       {headerEl}
-      <Hero onOpenSubscribe={openSubscribeFlow} />
-      <TopicsGrid topics={topics} subscribed={subscribed} onSelect={selectTopic} />
-      <HowItWorks />
-      <PricingSection price={price} subscribed={subscribed} onOpenSubscribe={openSubscribeFlow} onOpenPage={openPage} onGoWindows={() => goToSection('ventanas')} />
-      <Footer onOpenAdmin={() => setView('admin')} showAdminLink={isAdmin} onOpenPage={openPage} />
+      <div key="home" className="view-anim">
+        <Hero onOpenSubscribe={openSubscribeFlow} />
+        <TopicsGrid topics={topics} subscribed={subscribed} onSelect={selectTopic} />
+        <HowItWorks />
+        <PricingSection price={price} subscribed={subscribed} onOpenSubscribe={openSubscribeFlow} onOpenPage={openPage} onGoWindows={() => goToSection('ventanas')} />
+        <Footer onOpenAdmin={() => setView('admin')} showAdminLink={isAdmin} onOpenPage={openPage} />
+      </div>
       {overlays}
-    </div>
+    </React.Fragment>
   );
 }
 
