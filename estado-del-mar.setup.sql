@@ -1,6 +1,7 @@
 -- ============================================================
 -- ESTADO DEL MAR — Setup de base de datos (Supabase)
 -- Pegar y ejecutar completo en: Proyecto > SQL Editor > New query
+-- Es idempotente: se puede re-correr entero sin errores.
 -- ============================================================
 
 -- 1) Perfil de cada suscriptor (además de lo que ya guarda Supabase Auth)
@@ -29,7 +30,7 @@ create trigger on_auth_user_created
   after insert on auth.users
   for each row execute procedure public.handle_new_user();
 
--- 3) Las ventanas / temas (lo que hoy edita el panel de administración)
+-- 3) Las ventanas / temas (lo que edita el panel de administración)
 create table if not exists public.topics (
   id text primary key,
   title text not null,
@@ -88,6 +89,73 @@ alter table public.profiles add column if not exists country text;
 alter table public.profiles add column if not exists city text;
 alter table public.profiles add column if not exists birth_date date;
 alter table public.profiles add column if not exists motivation text;
+
+-- 8) Media y orden de las ventanas (para el panel de administración ampliado)
+alter table public.topics add column if not exists video_url text;
+alter table public.topics add column if not exists audio_url text;
+alter table public.topics add column if not exists sort_order integer default 0;
+
+-- 9) Almacenamiento de archivos (videos y audios que suben los administradores)
+--    Bucket público "media": cualquiera puede VER los archivos (para reproducir),
+--    pero solo un administrador puede SUBIR / cambiar / borrar.
+insert into storage.buckets (id, name, public)
+values ('media', 'media', true)
+on conflict (id) do nothing;
+
+drop policy if exists "media_lectura_publica" on storage.objects;
+create policy "media_lectura_publica"
+  on storage.objects for select
+  using (bucket_id = 'media');
+
+drop policy if exists "media_admin_sube" on storage.objects;
+create policy "media_admin_sube"
+  on storage.objects for insert to authenticated
+  with check (bucket_id = 'media' and exists (select 1 from public.profiles where id = auth.uid() and is_admin = true));
+
+drop policy if exists "media_admin_edita" on storage.objects;
+create policy "media_admin_edita"
+  on storage.objects for update to authenticated
+  using (bucket_id = 'media' and exists (select 1 from public.profiles where id = auth.uid() and is_admin = true));
+
+drop policy if exists "media_admin_borra" on storage.objects;
+create policy "media_admin_borra"
+  on storage.objects for delete to authenticated
+  using (bucket_id = 'media' and exists (select 1 from public.profiles where id = auth.uid() and is_admin = true));
+
+-- 10) Configuración general de la app (precio de la suscripción, etc.)
+--     Una sola fila (id = 'main'). Cualquiera puede leer el precio;
+--     solo un administrador puede cambiarlo desde el panel.
+create table if not exists public.app_config (
+  id    text primary key default 'main',
+  price text not null default '9.990'
+);
+
+insert into public.app_config (id, price)
+values ('main', '9.990')
+on conflict (id) do nothing;
+
+alter table public.app_config enable row level security;
+
+drop policy if exists "config_lectura_publica" on public.app_config;
+create policy "config_lectura_publica"
+  on public.app_config for select
+  using (true);
+
+drop policy if exists "config_solo_admin_edita" on public.app_config;
+create policy "config_solo_admin_edita"
+  on public.app_config for update
+  using (exists (select 1 from public.profiles where id = auth.uid() and is_admin = true));
+
+drop policy if exists "config_solo_admin_inserta" on public.app_config;
+create policy "config_solo_admin_inserta"
+  on public.app_config for insert
+  with check (exists (select 1 from public.profiles where id = auth.uid() and is_admin = true));
+
+-- 11) Permitir que cada usuario cree/actualice su propio perfil (para el upsert de suscripción/datos)
+drop policy if exists "insertar_mi_perfil" on public.profiles;
+create policy "insertar_mi_perfil"
+  on public.profiles for insert
+  with check (auth.uid() = id);
 
 -- ============================================================
 -- PASO MANUAL (hacer DESPUÉS de registrarte una vez en el sitio):

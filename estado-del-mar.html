@@ -588,8 +588,24 @@ const INITIAL_TOPICS = [
   },
 ];
 
-function computeLevel(total, levels) {
-  return levels.find(l => total >= l.min && total <= l.max) || levels[levels.length - 1];
+// Recalcula los rangos min/max de cada nivel según el puntaje máximo posible (preguntas × 3).
+// Preserva labels y mensajes; solo ajusta los umbrales para que cubran 0..máximo sin huecos.
+function computeDynamicLevels(levels, questionCount) {
+  if (!levels || levels.length === 0 || !questionCount || questionCount <= 0) return levels || [];
+  const maxScore = questionCount * 3;
+  const count = levels.length;
+  // Repartimos el rango 0..maxScore en `count` tramos iguales (el último absorbe el resto)
+  return levels.map((lv, i) => {
+    const min = Math.round((i / count) * maxScore);
+    const max = i === count - 1 ? maxScore : Math.round(((i + 1) / count) * maxScore) - 1;
+    return { ...lv, min, max };
+  });
+}
+
+function computeLevel(total, levels, questionCount) {
+  if (!levels || levels.length === 0) return null;
+  const dynLevels = (questionCount != null) ? computeDynamicLevels(levels, questionCount) : levels;
+  return dynLevels.find(l => total >= l.min && total <= l.max) || dynLevels[dynLevels.length - 1];
 }
 
 function formatDate(d) {
@@ -758,7 +774,7 @@ function DiagnosticQuiz({ topic, onComplete }) {
       setCurrent(current + 1);
     } else {
       const total = next.reduce((a, b) => a + b, 0);
-      const level = computeLevel(total, topic.levels);
+      const level = computeLevel(total, topic.levels, topic.questions ? topic.questions.length : null);
       setResult({ total, level });
       if (onComplete) onComplete(level);
     }
@@ -1253,7 +1269,14 @@ function AuthModal({ intent, initialMode, onClose, onAuthed }) {
       });
       setLoading(false);
       if (err) { setError(err.message); return; }
-      if (!data.session) { setNeedsConfirm(true); return; }
+      if (!data.session) {
+        // Supabase requiere confirmación de email: guardamos la intención si era suscribirse
+        if (intent === 'subscribe') {
+          try { localStorage.setItem('edm_pending_subscribe', '1'); } catch(e) {}
+        }
+        setNeedsConfirm(true);
+        return;
+      }
       onAuthed(intent === 'subscribe');
     } else {
       const { error: err } = await sb.auth.signInWithPassword({ email, password });
@@ -1269,7 +1292,7 @@ function AuthModal({ intent, initialMode, onClose, onAuthed }) {
         <div className="p-8 text-center">
           <p className="text-4xl mb-4">📬</p>
           <h3 className="font-serif text-2xl font-semibold text-sea-900 mb-3">Confirmá tu email</h3>
-          <p className="text-sea-600 mb-6">Te mandamos un link de confirmación a {email}. Abrilo y después volvé acá para iniciar sesión.</p>
+          <p className="text-sea-600 mb-6">Te enviamos un email para confirmar tu cuenta a {email}. Confirmalo y después volvé acá para iniciar sesión{intent === 'subscribe' ? ' y activar tu suscripción' : ''}.</p>
           <button onClick={onClose} className="btn btn-primary btn-block">Entendido</button>
         </div>
       </Modal>
@@ -1643,6 +1666,12 @@ function TopicEditForm({ topic, onSave, onCancel }) {
   const inp = "w-full border border-mist-200 rounded-xl px-4 py-2.5 focus:outline-none focus:border-mist-400 focus:ring-4 focus:ring-mist-100 transition-all";
 
   function handleSave() {
+    // Validación: título obligatorio
+    if (!title.trim()) {
+      alert('El título no puede estar vacío.');
+      return;
+    }
+
     const slides = slidesText.split('\n').map(l => l.trim()).filter(Boolean).map(line => {
       const [t, ...rest] = line.split('::');
       return { title: (t || '').trim(), text: rest.join('::').trim() || (t || '').trim() };
@@ -1650,15 +1679,26 @@ function TopicEditForm({ topic, onSave, onCancel }) {
     const steps = stepsText.split('\n').map(l => l.trim()).filter(Boolean);
     const questions = questionsText.split('\n').map(l => l.trim()).filter(Boolean).map(text => ({ text }));
 
+    // Advertencia si todo el contenido queda vacío
+    const finalSlides = slides.length ? slides : (topic && topic.slides ? topic.slides : []);
+    const finalSteps = steps.length ? steps : (topic && topic.exercise ? topic.exercise.steps : []);
+    const finalQuestions = questions.length ? questions : (topic ? topic.questions : []);
+    const contenidoVacio = finalSlides.length === 0 && finalSteps.length === 0 && finalQuestions.length === 0;
+    if (contenidoVacio) {
+      const ok = confirm('Esta ventana quedaría sin diapositivas, sin pasos de ejercicio y sin preguntas. ¿Querés guardarla igual?');
+      if (!ok) return;
+    }
+
+    // Partimos del topic real actual para no pisar campos no editados
     const base = topic || { id: slugify(title), questions: makeDefaultQuiz(title || 'este tema'), levels: makeDefaultLevels(), sort_order: Date.now() };
 
     const updated = {
       ...base,
-      title, emoji, gradient, description,
-      slides: slides.length ? slides : (base.slides || []),
+      title: title.trim(), emoji, gradient, description,
+      slides: finalSlides,
       meditation: { title: medTitle, duration: medDuration, description: medDescription },
-      exercise: { title: exerciseTitle, steps: steps.length ? steps : (base.exercise ? base.exercise.steps : []) },
-      questions: questions.length ? questions : base.questions,
+      exercise: { title: exerciseTitle, steps: finalSteps },
+      questions: finalQuestions,
       levels: levels,
       video_url: videoUrl || null,
       audio_url: audioUrl || null,
@@ -1733,13 +1773,20 @@ function TopicEditForm({ topic, onSave, onCancel }) {
         <div>
           <label className="text-sm font-semibold text-sea-700 block mb-2">Resultados según el puntaje</label>
           <div className="space-y-3">
-            {levels.map((lv, i) => (
-              <div key={i} className="rounded-xl border border-mist-100 p-3 bg-mist-50/50">
-                <p className="text-xs font-bold text-mist-600 mb-2">Puntaje {lv.min}–{lv.max}</p>
-                <input value={lv.label} onChange={e => setLevelField(i, 'label', e.target.value)} className={inp + " mb-2"} placeholder="Título del resultado (ej: Marea calma)" />
-                <textarea value={lv.message} onChange={e => setLevelField(i, 'message', e.target.value)} rows="2" className={inp} placeholder="Mensaje para la persona" />
-              </div>
-            ))}
+            {(() => {
+              const qCount = questionsText.split('\n').filter(l => l.trim()).length;
+              const dynLevels = (qCount > 0 && levels.length > 0) ? computeDynamicLevels(levels, qCount) : levels;
+              return levels.map((lv, i) => {
+                const dl = dynLevels[i] || lv;
+                return (
+                  <div key={i} className="rounded-xl border border-mist-100 p-3 bg-mist-50/50">
+                    <p className="text-xs font-bold text-mist-600 mb-2">Puntaje {dl.min}–{dl.max}{qCount > 0 ? ' (calculado según ' + qCount + ' pregunta' + (qCount !== 1 ? 's' : '') + ')' : ''}</p>
+                    <input value={lv.label} onChange={e => setLevelField(i, 'label', e.target.value)} className={inp + " mb-2"} placeholder="Título del resultado (ej: Marea calma)" />
+                    <textarea value={lv.message} onChange={e => setLevelField(i, 'message', e.target.value)} rows="2" className={inp} placeholder="Mensaje para la persona" />
+                  </div>
+                );
+              });
+            })()}
           </div>
         </div>
       </div>
@@ -1783,11 +1830,13 @@ function TopicEditForm({ topic, onSave, onCancel }) {
   );
 }
 
-function AdminPanel({ topics, price, setPrice, onExit, onSaveTopic, onDeleteTopic, onSeedInitial, onReorder }) {
+function AdminPanel({ topics, price, setPrice, onSavePrice, priceError, onExit, onSaveTopic, onDeleteTopic, onSeedInitial, onReorder }) {
   const [editingId, setEditingId] = React.useState(null);
   const [creating, setCreating] = React.useState(false);
   const [saving, setSaving] = React.useState(false);
   const [seeding, setSeeding] = React.useState(false);
+  const [savingPrice, setSavingPrice] = React.useState(false);
+  const [priceSaved, setPriceSaved] = React.useState(false);
 
   async function saveTopic(updated) {
     setSaving(true);
@@ -1829,9 +1878,26 @@ function AdminPanel({ topics, price, setPrice, onExit, onSaveTopic, onDeleteTopi
           <label className="text-sm font-semibold text-sea-700 block mb-1">Precio de la suscripción mensual</label>
           <div className="flex items-center gap-2 max-w-xs">
             <span className="text-sea-500">$</span>
-            <input value={price} onChange={e => setPrice(e.target.value)} className="w-full border border-mist-200 rounded-xl px-4 py-2.5 focus:outline-none focus:border-mist-400 focus:ring-4 focus:ring-mist-100 transition-all" />
+            <input value={price} onChange={e => { setPrice(e.target.value); setPriceSaved(false); }} className="w-full border border-mist-200 rounded-xl px-4 py-2.5 focus:outline-none focus:border-mist-400 focus:ring-4 focus:ring-mist-100 transition-all" />
             <span className="text-sea-500">/mes</span>
           </div>
+          <div className="mt-3 flex items-center gap-3">
+            <button
+              disabled={savingPrice}
+              onClick={async () => {
+                setSavingPrice(true);
+                setPriceSaved(false);
+                const ok = await onSavePrice(price);
+                setSavingPrice(false);
+                if (ok) setPriceSaved(true);
+              }}
+              className="btn btn-primary btn-sm"
+            >
+              {savingPrice ? 'Guardando…' : 'Guardar precio'}
+            </button>
+            {priceSaved && <span className="text-sm text-green-600 font-semibold">Precio guardado ✓</span>}
+          </div>
+          {priceError && <p className="text-sm text-red-600 mt-2">{priceError}</p>}
           <div className="mt-6 pt-6 border-t border-mist-100">
             <button onClick={seedInitial} disabled={seeding} className="btn-link text-sm text-sea-600 hover:text-sea-800 disabled:opacity-50 inline-block">
               {seeding ? 'Cargando…' : 'Cargar las 10 ventanas iniciales en la base (una sola vez)'}
@@ -2056,6 +2122,7 @@ function App() {
   const [authChecked, setAuthChecked] = React.useState(false);
   const [profile, setProfile] = React.useState(null);
   const [price, setPrice] = React.useState('9.990');
+  const [priceError, setPriceError] = React.useState('');
   const [showAuthModal, setShowAuthModal] = React.useState(false);
   const [authIntent, setAuthIntent] = React.useState('account'); // 'account' | 'subscribe'
   const [authInitialMode, setAuthInitialMode] = React.useState(null); // null | 'login' | 'signup'
@@ -2066,9 +2133,25 @@ function App() {
     sb.auth.getSession().then(({ data }) => {
       setSession(data.session);
       setAuthChecked(true);
+    }).catch(() => {
+      // Sin conexión o error de red: igualmente marcar como verificado con sesión nula
+      setAuthChecked(true);
     });
     const { data: listener } = sb.auth.onAuthStateChange((_event, newSession) => {
       setSession(newSession);
+      // Si hay una suscripción pendiente (el usuario confirmó su email después de registrarse),
+      // la activamos automáticamente y limpiamos la bandera
+      if (newSession && newSession.user) {
+        try {
+          const pending = localStorage.getItem('edm_pending_subscribe');
+          if (pending === '1') {
+            localStorage.removeItem('edm_pending_subscribe');
+            sb.from('profiles').upsert({ id: newSession.user.id, subscribed: true, subscribed_at: new Date().toISOString() }).then(({ error }) => {
+              if (!error) setProfile(p => ({ ...(p || { id: newSession.user.id }), subscribed: true, subscribed_at: new Date().toISOString() }));
+            });
+          }
+        } catch(e) {}
+      }
     });
     return () => listener.subscription.unsubscribe();
   }, []);
@@ -2078,13 +2161,23 @@ function App() {
     if (!userId) { setProfile(null); return; }
     sb.from('profiles').select('*').eq('id', userId).single().then(({ data, error }) => {
       if (!error) setProfile(data);
-    });
+      // Si hay error de red, simplemente no cargamos perfil; no bloqueamos la app
+    }).catch(() => {});
   }, [session]);
 
   React.useEffect(() => {
     sb.from('topics').select('*').order('sort_order', { ascending: true }).order('created_at', { ascending: true }).then(({ data, error }) => {
       if (!error && data && data.length > 0) setTopics(data);
-    });
+      // Si hay error de red, usamos los topics de INITIAL_TOPICS (ya cargados por defecto)
+    }).catch(() => {});
+  }, []);
+
+  // Cargar precio desde app_config (si la tabla existe); si no, mantiene el valor por defecto
+  React.useEffect(() => {
+    sb.from('app_config').select('price').eq('id', 'main').single().then(({ data, error }) => {
+      if (!error && data && data.price) setPrice(data.price);
+      // Si la tabla no existe todavía, simplemente mantenemos el precio por defecto sin error
+    }).catch(() => {});
   }, []);
 
   React.useEffect(() => {
@@ -2114,8 +2207,9 @@ function App() {
   }
 
   async function markSubscribedForUser(userId) {
-    const { error } = await sb.from('profiles').update({ subscribed: true, subscribed_at: new Date().toISOString() }).eq('id', userId);
-    if (!error) setProfile(p => ({ ...(p || { id: userId }), subscribed: true, subscribed_at: new Date().toISOString() }));
+    const { error } = await sb.from('profiles').upsert({ id: userId, subscribed: true, subscribed_at: new Date().toISOString() });
+    if (error) { console.error('Error al suscribir:', error.message); return; }
+    setProfile(p => ({ ...(p || { id: userId }), subscribed: true, subscribed_at: new Date().toISOString() }));
   }
 
   async function markSubscribed() {
@@ -2124,8 +2218,9 @@ function App() {
 
   async function cancelSubscription() {
     if (!session || !session.user) return;
-    const { error } = await sb.from('profiles').update({ subscribed: false }).eq('id', session.user.id);
-    if (!error) setProfile(p => ({ ...(p || {}), subscribed: false }));
+    const { error } = await sb.from('profiles').upsert({ id: session.user.id, subscribed: false });
+    if (error) { console.error('Error al cancelar suscripción:', error.message); return; }
+    setProfile(p => ({ ...(p || {}), subscribed: false }));
   }
 
   async function signOutUser() {
@@ -2135,7 +2230,7 @@ function App() {
 
   async function saveProfileFields(fields) {
     if (!session || !session.user) return { error: 'No hay sesión activa.' };
-    const { error } = await sb.from('profiles').update(fields).eq('id', session.user.id);
+    const { error } = await sb.from('profiles').upsert({ id: session.user.id, ...fields });
     if (!error) setProfile(p => ({ ...(p || {}), ...fields }));
     return { error: error ? error.message : null };
   }
@@ -2201,6 +2296,17 @@ function App() {
     }
   }
 
+  async function savePriceToDb(newPrice) {
+    setPriceError('');
+    const { error } = await sb.from('app_config').upsert({ id: 'main', price: newPrice });
+    if (error) {
+      setPriceError('No se pudo guardar el precio: ' + error.message);
+      return false;
+    }
+    setPrice(newPrice);
+    return true;
+  }
+
   async function seedInitialTopics() {
     const { error } = await sb.from('topics').upsert(INITIAL_TOPICS);
     if (error) { alert('No se pudo cargar el contenido inicial: ' + error.message); return; }
@@ -2234,7 +2340,7 @@ function App() {
     }
     return (
       <div key="admin" className="view-anim">
-        <AdminPanel topics={topics} price={price} setPrice={setPrice} onExit={goHome} onSaveTopic={saveTopicToDb} onDeleteTopic={deleteTopicFromDb} onSeedInitial={seedInitialTopics} onReorder={reorderTopics} />
+        <AdminPanel topics={topics} price={price} setPrice={setPrice} onSavePrice={savePriceToDb} priceError={priceError} onExit={goHome} onSaveTopic={saveTopicToDb} onDeleteTopic={deleteTopicFromDb} onSeedInitial={seedInitialTopics} onReorder={reorderTopics} />
       </div>
     );
   }
