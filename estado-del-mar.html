@@ -760,6 +760,34 @@ function Logo({ size, tagline, wordClass }) {
   );
 }
 
+/* ===== estado-del-mar.02-ui-basics.js (ErrorBoundary) ===== */
+
+class ErrorBoundary extends React.Component {
+  constructor(props) {
+    super(props);
+    this.state = { hasError: false };
+  }
+  static getDerivedStateFromError() {
+    return { hasError: true };
+  }
+  componentDidCatch(error, info) {
+    console.error('ErrorBoundary capturó un error:', error, info);
+  }
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="max-w-xl mx-auto py-12 text-center px-6">
+          <p className="text-4xl mb-4">🌊</p>
+          <h3 className="font-serif text-2xl text-sea-900 mb-3">Algo se rompió al mostrar esta sección</h3>
+          <p className="text-sea-600 mb-6">Recargá la página para volver a intentarlo. Si el problema persiste, avisale al administrador.</p>
+          <button onClick={() => window.location.reload()} className="btn btn-primary">Recargar página</button>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
+
 /* ===== estado-del-mar.03-diagnostic-quiz.js ===== */
 
 function DiagnosticQuiz({ topic, onComplete }) {
@@ -767,14 +795,28 @@ function DiagnosticQuiz({ topic, onComplete }) {
   const [current, setCurrent] = React.useState(0);
   const [result, setResult] = React.useState(null);
 
+  // Guard: si no hay preguntas o niveles, mostrá estado vacío
+  const questions = (topic && topic.questions) || [];
+  const levels = (topic && topic.levels) || [];
+
+  if (!questions.length) {
+    return (
+      <div className="max-w-xl mx-auto py-10 text-center text-sea-500">
+        <p className="text-3xl mb-3">📋</p>
+        <p className="font-semibold">Esta ventana todavía no tiene preguntas de check-in.</p>
+        <p className="text-sm mt-1">El administrador puede agregarlas desde el panel.</p>
+      </div>
+    );
+  }
+
   function choose(value) {
     const next = [...answers, value];
     setAnswers(next);
-    if (current + 1 < topic.questions.length) {
+    if (current + 1 < questions.length) {
       setCurrent(current + 1);
     } else {
       const total = next.reduce((a, b) => a + b, 0);
-      const level = computeLevel(total, topic.levels, topic.questions ? topic.questions.length : null);
+      const level = computeLevel(total, levels, questions.length);
       setResult({ total, level });
       if (onComplete) onComplete(level);
     }
@@ -790,20 +832,20 @@ function DiagnosticQuiz({ topic, onComplete }) {
     return (
       <div className="animate-fadein max-w-xl mx-auto text-center py-6">
         <p className="uppercase tracking-widest text-xs text-sea-500 font-semibold mb-2">Tu check-in de hoy</p>
-        <h3 className="font-serif text-3xl md:text-4xl font-semibold text-sea-900 mb-4">{result.level.label}</h3>
-        <p className="text-sea-700 leading-relaxed mb-6">{result.level.message}</p>
+        <h3 className="font-serif text-3xl md:text-4xl font-semibold text-sea-900 mb-4">{result.level ? result.level.label : ''}</h3>
+        <p className="text-sea-700 leading-relaxed mb-6">{result.level ? result.level.message : ''}</p>
         <p className="text-xs text-sea-400 mb-6 italic">Esto es una orientación para elegir contenido, no un diagnóstico clínico. Si algo de esto te desborda, una consulta con un profesional siempre suma.</p>
         <button onClick={restart} className="btn btn-soft btn-sm">Volver a hacer el check-in</button>
       </div>
     );
   }
 
-  const q = topic.questions[current];
+  const q = questions[current];
 
   return (
     <div className="max-w-xl mx-auto py-4">
-      <div className="mb-6"><ProgressDots count={topic.questions.length} current={current} /></div>
-      <p className="text-center text-xs text-sea-400 mb-2">Pregunta {current + 1} de {topic.questions.length}</p>
+      <div className="mb-6"><ProgressDots count={questions.length} current={current} /></div>
+      <p className="text-center text-xs text-sea-400 mb-2">Pregunta {current + 1} de {questions.length}</p>
       <h3 className="text-center font-serif text-2xl md:text-3xl text-sea-900 mb-8 px-2">{q.text}</h3>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         {LIKERT.map(opt => (
@@ -821,11 +863,22 @@ function DiagnosticQuiz({ topic, onComplete }) {
 
 function SlideViewer({ slides }) {
   const [i, setI] = React.useState(0);
-  const slide = slides[i];
+  // Guard: si no hay diapositivas, mostrá estado vacío
+  const safeSlides = Array.isArray(slides) && slides.length > 0 ? slides : null;
+  if (!safeSlides) {
+    return (
+      <div className="max-w-xl mx-auto py-10 text-center text-sea-500">
+        <p className="text-3xl mb-3">📄</p>
+        <p className="font-semibold">Sin diapositivas aún.</p>
+        <p className="text-sm mt-1">El administrador puede agregar el contenido desde el panel.</p>
+      </div>
+    );
+  }
+  const slide = safeSlides[i];
   return (
     <div className="max-w-xl mx-auto py-4">
       <div className="bg-white rounded-3xl shadow-sm border border-mist-100 p-8 md:p-10 min-h-[220px] flex flex-col justify-center animate-fadein" key={i}>
-        <p className="text-xs uppercase tracking-widest text-mist-500 mb-3">Diapositiva {i + 1} de {slides.length}</p>
+        <p className="text-xs uppercase tracking-widest text-mist-500 mb-3">Diapositiva {i + 1} de {safeSlides.length}</p>
         <h4 className="font-serif text-2xl md:text-3xl text-sea-900 mb-3">{slide.title}</h4>
         <p className="text-sea-700 leading-relaxed">{slide.text}</p>
       </div>
@@ -834,8 +887,8 @@ function SlideViewer({ slides }) {
           className="px-4 py-2 rounded-full text-sm font-semibold disabled:opacity-30 disabled:cursor-not-allowed text-sea-600 hover:bg-mist-100 hover:-translate-x-0.5 transition-all duration-200">
           ← Anterior
         </button>
-        <ProgressDots count={slides.length} current={i} />
-        <button disabled={i === slides.length - 1} onClick={() => setI(i + 1)}
+        <ProgressDots count={safeSlides.length} current={i} />
+        <button disabled={i === safeSlides.length - 1} onClick={() => setI(i + 1)}
           className="px-4 py-2 rounded-full text-sm font-semibold disabled:opacity-30 disabled:cursor-not-allowed text-sea-600 hover:bg-mist-100 hover:translate-x-0.5 transition-all duration-200">
           Siguiente →
         </button>
@@ -848,27 +901,28 @@ function SlideViewer({ slides }) {
 /* ===== estado-del-mar.05-meditation-player.js ===== */
 
 function MeditationPlayer({ meditation, audioUrl }) {
-  // Si hay un audio real cargado desde el panel, usamos un reproductor real.
-  if (audioUrl) {
-    return (
-      <div className="max-w-xl mx-auto py-4">
-        <div className="bg-gradient-to-br from-mist-400 to-sea-600 rounded-3xl shadow-lg shadow-mist-200/50 p-8 md:p-10 text-center text-white">
-          <p className="text-xs uppercase tracking-widest text-white/80 mb-2">Meditación guiada</p>
-          <h4 className="font-serif text-2xl md:text-3xl mb-2">{meditation.title}</h4>
-          <p className="text-white/90 text-sm mb-6">{meditation.description}</p>
-          <audio src={audioUrl} controls className="w-full rounded-full"></audio>
-        </div>
-      </div>
-    );
-  }
-
-  // Reproductor de ejemplo (cuando todavía no se cargó un audio real).
+  // Todos los hooks al nivel superior (regla de hooks de React)
+  const audioRealRef = React.useRef(null);
+  const [audioError, setAudioError] = React.useState(false);
   const [playing, setPlaying] = React.useState(false);
   const [progress, setProgress] = React.useState(0);
-  const totalMinutes = parseInt(meditation.duration) || 6;
 
+  // A7: usar Math.max(1, ...) para evitar división por cero con duración 0 o inválida
+  const totalMinutes = React.useMemo(
+    () => Math.max(1, parseInt((meditation && meditation.duration) || '6') || 6),
+    [meditation]
+  );
+
+  // A9: pausar audio al desmontar o al cambiar de URL
   React.useEffect(() => {
-    if (!playing) return;
+    return () => {
+      if (audioRealRef.current) audioRealRef.current.pause();
+    };
+  }, [audioUrl]);
+
+  // Reproductor de ejemplo: progreso simulado
+  React.useEffect(() => {
+    if (!playing || audioUrl) return;
     const step = 100 / (totalMinutes * 10);
     const id = setInterval(() => {
       setProgress(p => {
@@ -877,8 +931,46 @@ function MeditationPlayer({ meditation, audioUrl }) {
       });
     }, 300);
     return () => clearInterval(id);
-  }, [playing, totalMinutes]);
+  }, [playing, totalMinutes, audioUrl]);
 
+  // Guard: si no hay datos de meditación, mostrá estado vacío
+  if (!meditation) {
+    return (
+      <div className="max-w-xl mx-auto py-10 text-center text-sea-500">
+        <p className="text-3xl mb-3">🎧</p>
+        <p className="font-semibold">Esta ventana todavía no tiene meditación configurada.</p>
+        <p className="text-sm mt-1">El administrador puede agregarla desde el panel.</p>
+      </div>
+    );
+  }
+
+  // Si hay un audio real cargado desde el panel, usamos un reproductor real.
+  if (audioUrl) {
+    return (
+      <div className="max-w-xl mx-auto py-4">
+        <div className="bg-gradient-to-br from-mist-400 to-sea-600 rounded-3xl shadow-lg shadow-mist-200/50 p-8 md:p-10 text-center text-white">
+          <p className="text-xs uppercase tracking-widest text-white/80 mb-2">Meditación guiada</p>
+          <h4 className="font-serif text-2xl md:text-3xl mb-2">{meditation.title}</h4>
+          <p className="text-white/90 text-sm mb-6">{meditation.description}</p>
+          {audioError ? (
+            <p className="bg-white/20 rounded-xl px-4 py-3 text-sm text-white font-semibold">
+              No se pudo cargar el archivo. Verificá que se haya subido bien.
+            </p>
+          ) : (
+            <audio
+              ref={audioRealRef}
+              src={audioUrl}
+              controls
+              className="w-full rounded-full"
+              onError={() => setAudioError(true)}
+            ></audio>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  // Reproductor de ejemplo (cuando todavía no se cargó un audio real).
   function toggle() {
     if (progress >= 100) setProgress(0);
     setPlaying(p => !p);
@@ -908,10 +1000,17 @@ function MeditationPlayer({ meditation, audioUrl }) {
 }
 
 function VideoPlayer({ src }) {
+  const [videoError, setVideoError] = React.useState(false);
   return (
     <div className="max-w-2xl mx-auto py-4">
       <div className="rounded-3xl overflow-hidden shadow-lg shadow-mist-200/50 bg-black">
-        <video src={src} controls playsInline className="w-full max-h-[70vh] bg-black"></video>
+        {videoError ? (
+          <div className="flex items-center justify-center min-h-[200px] px-6 py-8 text-center">
+            <p className="text-white text-sm font-semibold">No se pudo cargar el archivo. Verificá que se haya subido bien.</p>
+          </div>
+        ) : (
+          <video src={src} controls playsInline className="w-full max-h-[70vh] bg-black" onError={() => setVideoError(true)}></video>
+        )}
       </div>
       <p className="text-center text-xs text-sea-400 mt-4">Video de la ventana.</p>
     </div>
@@ -923,6 +1022,18 @@ function VideoPlayer({ src }) {
 function ExerciseChecklist({ exercise }) {
   const [done, setDone] = React.useState({});
   function toggle(i) { setDone(d => ({ ...d, [i]: !d[i] })); }
+
+  // Guard: si no hay ejercicio o steps, mostrá estado vacío
+  if (!exercise || !Array.isArray(exercise.steps) || exercise.steps.length === 0) {
+    return (
+      <div className="max-w-xl mx-auto py-10 text-center text-sea-500">
+        <p className="text-3xl mb-3">✍️</p>
+        <p className="font-semibold">Esta ventana todavía no tiene ejercicio configurado.</p>
+        <p className="text-sm mt-1">El administrador puede agregarlo desde el panel.</p>
+      </div>
+    );
+  }
+
   const total = exercise.steps.length;
   const doneCount = Object.values(done).filter(Boolean).length;
 
@@ -1362,7 +1473,7 @@ function AuthModal({ intent, initialMode, onClose, onAuthed }) {
   );
 }
 
-function ProfileDrawer({ email, profile, subscribed, subscribeDate, isAdmin, onSave, onSubscribe, onCancelSubscription, onSignOut, onOpenAdmin, onClose }) {
+function ProfileDrawer({ email, profile, subscribed, subscribeDate, isAdmin, subscribing, onSave, onSubscribe, onCancelSubscription, onSignOut, onOpenAdmin, onClose }) {
   const [fullName, setFullName] = React.useState((profile && profile.full_name) || '');
   const [phone, setPhone] = React.useState((profile && profile.phone) || '');
   const [country, setCountry] = React.useState((profile && profile.country) || '');
@@ -1442,17 +1553,21 @@ function ProfileDrawer({ email, profile, subscribed, subscribeDate, isAdmin, onS
               </div>
             )}
             {!subscribed && (
-              <button onClick={onSubscribe} className="btn btn-coral btn-block">Suscribirme</button>
+              <button onClick={onSubscribe} disabled={subscribing} className="btn btn-coral btn-block disabled:opacity-50">
+                {subscribing ? 'Procesando…' : 'Suscribirme'}
+              </button>
             )}
             {subscribed && !confirming && (
-              <button onClick={() => setConfirming(true)} className="btn btn-danger btn-sm">Cancelar suscripción</button>
+              <button onClick={() => setConfirming(true)} disabled={subscribing} className="btn btn-danger btn-sm disabled:opacity-50">Cancelar suscripción</button>
             )}
             {subscribed && confirming && (
               <div className="space-y-3">
                 <p className="text-sm text-sea-600">¿Confirmás que querés cancelar? Vas a perder el acceso a las ventanas.</p>
                 <div className="flex flex-wrap gap-2">
-                  <button onClick={onCancelSubscription} className="btn btn-danger-solid btn-sm">Sí, cancelar</button>
-                  <button onClick={() => setConfirming(false)} className="btn btn-ghost btn-sm">Volver</button>
+                  <button onClick={onCancelSubscription} disabled={subscribing} className="btn btn-danger-solid btn-sm disabled:opacity-50">
+                    {subscribing ? 'Procesando…' : 'Sí, cancelar'}
+                  </button>
+                  <button onClick={() => setConfirming(false)} disabled={subscribing} className="btn btn-ghost btn-sm disabled:opacity-50">Volver</button>
                 </div>
               </div>
             )}
@@ -1601,11 +1716,33 @@ async function uploadMedia(file, prefix) {
 function MediaUploader({ label, accept, prefix, value, onChange, hint, kind }) {
   const [uploading, setUploading] = React.useState(false);
   const [err, setErr] = React.useState('');
+  const [mediaError, setMediaError] = React.useState(false);
   const inputRef = React.useRef(null);
+
+  // Resetear el error de media si cambia la URL
+  React.useEffect(() => { setMediaError(false); }, [value]);
 
   async function handleFile(e) {
     const file = e.target.files && e.target.files[0];
     if (!file) return;
+    // A5: validar tamaño (máx 45 MB)
+    const MAX_BYTES = 45 * 1024 * 1024;
+    if (file.size > MAX_BYTES) {
+      setErr('El archivo supera 45 MB. Subí uno más liviano.');
+      if (inputRef.current) inputRef.current.value = '';
+      return;
+    }
+    // A5: validar tipo según el kind esperado (video o audio)
+    if (kind === 'video' && !file.type.startsWith('video/')) {
+      setErr('El archivo no es un video válido. Usá un archivo mp4 u otro formato de video.');
+      if (inputRef.current) inputRef.current.value = '';
+      return;
+    }
+    if (kind === 'audio' && !file.type.startsWith('audio/')) {
+      setErr('El archivo no es un audio válido. Usá un archivo mp3 u otro formato de audio.');
+      if (inputRef.current) inputRef.current.value = '';
+      return;
+    }
     setErr(''); setUploading(true);
     const res = await uploadMedia(file, prefix);
     setUploading(false);
@@ -1619,12 +1756,14 @@ function MediaUploader({ label, accept, prefix, value, onChange, hint, kind }) {
       <label className="text-sm font-semibold text-sea-700 block mb-1">{label}</label>
       {value ? (
         <div className="mb-2 rounded-xl border border-mist-200 bg-mist-50 p-3">
-          {kind === 'video'
-            ? <video src={value} controls className="w-full rounded-lg max-h-52 bg-black"></video>
-            : <audio src={value} controls className="w-full"></audio>}
+          {mediaError ? (
+            <p className="text-sm text-red-600 py-2">No se pudo cargar el archivo. Verificá que se haya subido bien.</p>
+          ) : kind === 'video'
+            ? <video src={value} controls className="w-full rounded-lg max-h-52 bg-black" onError={() => setMediaError(true)}></video>
+            : <audio src={value} controls className="w-full" onError={() => setMediaError(true)}></audio>}
           <div className="flex items-center gap-3 mt-2">
-            <span className="text-xs text-mist-700 font-semibold">Archivo cargado ✓</span>
-            <button onClick={() => onChange('')} className="btn-link text-xs text-red-500 hover:text-red-700">Quitar</button>
+            <span className="text-xs text-mist-700 font-semibold">{mediaError ? 'Error al cargar' : 'Archivo cargado ✓'}</span>
+            <button onClick={() => { onChange(''); setMediaError(false); }} className="btn-link text-xs text-red-500 hover:text-red-700">Quitar</button>
           </div>
         </div>
       ) : null}
@@ -1644,13 +1783,17 @@ function TopicEditForm({ topic, onSave, onCancel }) {
   const [gradient, setGradient] = React.useState(topic ? topic.gradient : GRADIENT_PRESETS[0]);
   const [description, setDescription] = React.useState(topic ? topic.description : '');
   const [slidesText, setSlidesText] = React.useState(
-    topic ? topic.slides.map(s => s.title + ' :: ' + s.text).join('\n') : ''
+    (topic && Array.isArray(topic.slides) && topic.slides.length)
+      ? topic.slides.map(s => s.title + ' :: ' + s.text).join('\n')
+      : ''
   );
-  const [medTitle, setMedTitle] = React.useState(topic ? topic.meditation.title : '');
-  const [medDuration, setMedDuration] = React.useState(topic ? topic.meditation.duration : '6 min');
-  const [medDescription, setMedDescription] = React.useState(topic ? topic.meditation.description : '');
-  const [exerciseTitle, setExerciseTitle] = React.useState(topic ? topic.exercise.title : '');
-  const [stepsText, setStepsText] = React.useState(topic ? topic.exercise.steps.join('\n') : '');
+  const [medTitle, setMedTitle] = React.useState(topic?.meditation?.title || '');
+  const [medDuration, setMedDuration] = React.useState(topic?.meditation?.duration || '6 min');
+  const [medDescription, setMedDescription] = React.useState(topic?.meditation?.description || '');
+  const [exerciseTitle, setExerciseTitle] = React.useState(topic?.exercise?.title || '');
+  const [stepsText, setStepsText] = React.useState(
+    (topic && Array.isArray(topic?.exercise?.steps)) ? topic.exercise.steps.join('\n') : ''
+  );
   // NUEVO: media + preguntas + niveles
   const [videoUrl, setVideoUrl] = React.useState((topic && topic.video_url) || '');
   const [audioUrl, setAudioUrl] = React.useState((topic && topic.audio_url) || '');
@@ -1661,6 +1804,40 @@ function TopicEditForm({ topic, onSave, onCancel }) {
   const [levels, setLevels] = React.useState(baseLevels.map(l => ({ ...l })));
   function setLevelField(i, field, val) {
     setLevels(ls => ls.map((l, idx) => idx === i ? { ...l, [field]: val } : l));
+  }
+
+  // A8: valores iniciales para detectar cambios sin guardar
+  const initialRef = React.useRef({
+    title: topic ? topic.title : '',
+    emoji: topic ? topic.emoji : EMOJI_PRESETS[0],
+    gradient: topic ? topic.gradient : GRADIENT_PRESETS[0],
+    description: topic ? topic.description : '',
+    slidesText: (topic && Array.isArray(topic.slides) && topic.slides.length) ? topic.slides.map(s => s.title + ' :: ' + s.text).join('\n') : '',
+    medTitle: topic?.meditation?.title || '',
+    medDuration: topic?.meditation?.duration || '6 min',
+    medDescription: topic?.meditation?.description || '',
+    exerciseTitle: topic?.exercise?.title || '',
+    stepsText: (topic && Array.isArray(topic?.exercise?.steps)) ? topic.exercise.steps.join('\n') : '',
+    videoUrl: (topic && topic.video_url) || '',
+    audioUrl: (topic && topic.audio_url) || '',
+    questionsText: (topic && topic.questions) ? topic.questions.map(q => q.text).join('\n') : '',
+  });
+
+  function isDirty() {
+    const init = initialRef.current;
+    return title !== init.title || emoji !== init.emoji || gradient !== init.gradient ||
+      description !== init.description || slidesText !== init.slidesText ||
+      medTitle !== init.medTitle || medDuration !== init.medDuration || medDescription !== init.medDescription ||
+      exerciseTitle !== init.exerciseTitle || stepsText !== init.stepsText ||
+      videoUrl !== init.videoUrl || audioUrl !== init.audioUrl || questionsText !== init.questionsText;
+  }
+
+  function handleCancel() {
+    if (isDirty()) {
+      const ok = confirm('Tenés cambios sin guardar. ¿Querés descartarlos?');
+      if (!ok) return;
+    }
+    onCancel();
   }
 
   const inp = "w-full border border-mist-200 rounded-xl px-4 py-2.5 focus:outline-none focus:border-mist-400 focus:ring-4 focus:ring-mist-100 transition-all";
@@ -1824,13 +2001,13 @@ function TopicEditForm({ topic, onSave, onCancel }) {
 
       <div className="flex gap-3 pt-2 border-t border-mist-100">
         <button onClick={handleSave} className="btn btn-primary mt-4">Guardar ventana</button>
-        <button onClick={onCancel} className="btn btn-ghost mt-4">Cancelar</button>
+        <button onClick={handleCancel} className="btn btn-ghost mt-4">Cancelar</button>
       </div>
     </div>
   );
 }
 
-function AdminPanel({ topics, price, setPrice, onSavePrice, priceError, onExit, onSaveTopic, onDeleteTopic, onSeedInitial, onReorder }) {
+function AdminPanel({ topics, price, setPrice, onSavePrice, priceError, onExit, onSaveTopic, onDeleteTopic, onSeedInitial, onReorder, reordering }) {
   const [editingId, setEditingId] = React.useState(null);
   const [creating, setCreating] = React.useState(false);
   const [saving, setSaving] = React.useState(false);
@@ -1924,8 +2101,8 @@ function AdminPanel({ topics, price, setPrice, onSavePrice, priceError, onExit, 
               {topics.map((t, i) => (
                 <div key={t.id} className="bg-white rounded-2xl border border-mist-100 p-4 flex items-center gap-3 hover:shadow-md hover:shadow-mist-100 transition-shadow">
                   <div className="flex flex-col gap-1 flex-shrink-0">
-                    <button onClick={() => onReorder(i, -1)} disabled={i === 0} title="Subir" className="w-7 h-7 rounded-lg bg-mist-50 text-sea-600 hover:bg-mist-100 disabled:opacity-30 disabled:cursor-not-allowed flex items-center justify-center text-xs transition-colors">▲</button>
-                    <button onClick={() => onReorder(i, 1)} disabled={i === topics.length - 1} title="Bajar" className="w-7 h-7 rounded-lg bg-mist-50 text-sea-600 hover:bg-mist-100 disabled:opacity-30 disabled:cursor-not-allowed flex items-center justify-center text-xs transition-colors">▼</button>
+                    <button onClick={() => onReorder(i, -1)} disabled={i === 0 || reordering} title="Subir" className="w-7 h-7 rounded-lg bg-mist-50 text-sea-600 hover:bg-mist-100 disabled:opacity-30 disabled:cursor-not-allowed flex items-center justify-center text-xs transition-colors">▲</button>
+                    <button onClick={() => onReorder(i, 1)} disabled={i === topics.length - 1 || reordering} title="Bajar" className="w-7 h-7 rounded-lg bg-mist-50 text-sea-600 hover:bg-mist-100 disabled:opacity-30 disabled:cursor-not-allowed flex items-center justify-center text-xs transition-colors">▼</button>
                   </div>
                   <div className={"w-12 h-12 rounded-full bg-gradient-to-br " + t.gradient + " flex items-center justify-center text-xl flex-shrink-0"}>{t.emoji}</div>
                   <div className="flex-1 min-w-0">
@@ -2128,6 +2305,10 @@ function App() {
   const [authInitialMode, setAuthInitialMode] = React.useState(null); // null | 'login' | 'signup'
   const [showProfile, setShowProfile] = React.useState(false); // cajón lateral "Mi cuenta"
   const [pendingScroll, setPendingScroll] = React.useState(null);
+  // A3: guard de doble submit para suscripción/cancelación
+  const [subscribing, setSubscribing] = React.useState(false);
+  // A4: guard de reordenamiento concurrente
+  const [reordering, setReordering] = React.useState(false);
 
   React.useEffect(() => {
     sb.auth.getSession().then(({ data }) => {
@@ -2213,14 +2394,26 @@ function App() {
   }
 
   async function markSubscribed() {
-    if (session && session.user) await markSubscribedForUser(session.user.id);
+    // A3: ignorar si ya hay una operación en curso
+    if (subscribing) return;
+    if (session && session.user) {
+      setSubscribing(true);
+      try { await markSubscribedForUser(session.user.id); } finally { setSubscribing(false); }
+    }
   }
 
   async function cancelSubscription() {
+    // A3: ignorar si ya hay una operación en curso
+    if (subscribing) return;
     if (!session || !session.user) return;
-    const { error } = await sb.from('profiles').upsert({ id: session.user.id, subscribed: false });
-    if (error) { console.error('Error al cancelar suscripción:', error.message); return; }
-    setProfile(p => ({ ...(p || {}), subscribed: false }));
+    setSubscribing(true);
+    try {
+      const { error } = await sb.from('profiles').upsert({ id: session.user.id, subscribed: false });
+      if (error) { console.error('Error al cancelar suscripción:', error.message); return; }
+      setProfile(p => ({ ...(p || {}), subscribed: false }));
+    } finally {
+      setSubscribing(false);
+    }
   }
 
   async function signOutUser() {
@@ -2236,6 +2429,8 @@ function App() {
   }
 
   function openSubscribeFlow() {
+    // A3: ignorar si ya hay una operación en curso
+    if (subscribing) return;
     if (session && session.user) {
       markSubscribed();
     } else {
@@ -2280,19 +2475,34 @@ function App() {
   }
 
   async function reorderTopics(index, dir) {
+    // A4: evitar tandas concurrentes
+    if (reordering) return;
     const j = index + dir;
     if (j < 0 || j >= topics.length) return;
+
+    const prevTopics = topics; // guardar para posible revert
     const arr = [...topics];
     const [moved] = arr.splice(index, 1);
     arr.splice(j, 0, moved);
-    const withOrder = arr.map((t, i) => ({ ...t, sort_order: i }));
+    const withOrder = arr.map((t, idx) => ({ ...t, sort_order: idx }));
     setTopics(withOrder);
-    // Persistir el nuevo orden (solo las que cambiaron de posición)
-    for (let i = 0; i < withOrder.length; i++) {
-      const prev = topics.find(x => x.id === withOrder[i].id);
-      if (!prev || prev.sort_order !== i) {
-        await sb.from('topics').update({ sort_order: i }).eq('id', withOrder[i].id);
+    setReordering(true);
+
+    try {
+      let failed = false;
+      for (let idx = 0; idx < withOrder.length; idx++) {
+        const prev = prevTopics.find(x => x.id === withOrder[idx].id);
+        if (!prev || prev.sort_order !== idx) {
+          const { error } = await sb.from('topics').update({ sort_order: idx }).eq('id', withOrder[idx].id);
+          if (error) { failed = true; break; }
+        }
       }
+      if (failed) {
+        setTopics(prevTopics);
+        alert('No se pudo guardar el nuevo orden, intentá de nuevo.');
+      }
+    } finally {
+      setReordering(false);
     }
   }
 
@@ -2340,7 +2550,9 @@ function App() {
     }
     return (
       <div key="admin" className="view-anim">
-        <AdminPanel topics={topics} price={price} setPrice={setPrice} onSavePrice={savePriceToDb} priceError={priceError} onExit={goHome} onSaveTopic={saveTopicToDb} onDeleteTopic={deleteTopicFromDb} onSeedInitial={seedInitialTopics} onReorder={reorderTopics} />
+        <ErrorBoundary>
+          <AdminPanel topics={topics} price={price} setPrice={setPrice} onSavePrice={savePriceToDb} priceError={priceError} onExit={goHome} onSaveTopic={saveTopicToDb} onDeleteTopic={deleteTopicFromDb} onSeedInitial={seedInitialTopics} onReorder={reorderTopics} reordering={reordering} />
+        </ErrorBoundary>
       </div>
     );
   }
@@ -2350,11 +2562,13 @@ function App() {
     <React.Fragment>
       {loggedIn && showProfile && (
         <ProfileDrawer
+          key={profile ? profile.id : 'noprofile'}
           email={session.user.email}
           profile={profile}
           subscribed={subscribed}
           subscribeDate={profile ? profile.subscribed_at : null}
           isAdmin={isAdmin}
+          subscribing={subscribing}
           onSave={saveProfileFields}
           onSubscribe={markSubscribed}
           onCancelSubscription={cancelSubscription}
@@ -2376,9 +2590,11 @@ function App() {
       <React.Fragment>
         {headerEl}
         <div key={view} className="view-anim">
-          {view === 'sobre' && <SobrePage subscribed={subscribed} onOpenSubscribe={openSubscribeFlow} onOpenPage={openPage} />}
-          {view === 'faq' && <FaqPage onOpenPage={openPage} />}
-          {view === 'contacto' && <ContactoPage onOpenPage={openPage} />}
+          <ErrorBoundary>
+            {view === 'sobre' && <SobrePage subscribed={subscribed} onOpenSubscribe={openSubscribeFlow} onOpenPage={openPage} />}
+            {view === 'faq' && <FaqPage onOpenPage={openPage} />}
+            {view === 'contacto' && <ContactoPage onOpenPage={openPage} />}
+          </ErrorBoundary>
           <Footer onOpenAdmin={() => setView('admin')} showAdminLink={isAdmin} onOpenPage={openPage} />
         </div>
         {overlays}
@@ -2393,7 +2609,9 @@ function App() {
       <React.Fragment>
         {headerEl}
         <div key={'detail-' + topic.id} className="view-anim">
-          <TopicDetail topic={topic} subscribed={subscribed} onBack={goHome} onOpenSubscribe={openSubscribeFlow} />
+          <ErrorBoundary>
+            <TopicDetail topic={topic} subscribed={subscribed} onBack={goHome} onOpenSubscribe={openSubscribeFlow} />
+          </ErrorBoundary>
           <Footer onOpenAdmin={() => setView('admin')} showAdminLink={isAdmin} onOpenPage={openPage} />
         </div>
         {overlays}
@@ -2405,10 +2623,12 @@ function App() {
     <React.Fragment>
       {headerEl}
       <div key="home" className="view-anim">
-        <Hero onOpenSubscribe={openSubscribeFlow} />
-        <TopicsGrid topics={topics} subscribed={subscribed} onSelect={selectTopic} />
-        <HowItWorks />
-        <PricingSection price={price} subscribed={subscribed} onOpenSubscribe={openSubscribeFlow} onOpenPage={openPage} onGoWindows={() => goToSection('ventanas')} />
+        <ErrorBoundary>
+          <Hero onOpenSubscribe={openSubscribeFlow} />
+          <TopicsGrid topics={topics} subscribed={subscribed} onSelect={selectTopic} />
+          <HowItWorks />
+          <PricingSection price={price} subscribed={subscribed} onOpenSubscribe={openSubscribeFlow} onOpenPage={openPage} onGoWindows={() => goToSection('ventanas')} />
+        </ErrorBoundary>
         <Footer onOpenAdmin={() => setView('admin')} showAdminLink={isAdmin} onOpenPage={openPage} />
       </div>
       {overlays}
