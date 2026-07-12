@@ -2963,7 +2963,7 @@ function ContactoPage({ onOpenPage, waNumber, waMsg }) {
 
         {/* --- Panel principal de WhatsApp --- */}
         <Reveal>
-          <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-emerald-400 via-emerald-500 to-sea-600 text-white shadow-2xl shadow-emerald-300/40">
+          <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-mist-400 to-sea-600 text-white shadow-2xl shadow-mist-200/50">
             {/* Orbes decorativas */}
             <div className="absolute -top-12 -right-12 w-56 h-56 rounded-full bg-white/10 blur-3xl animate-aurora pointer-events-none"></div>
             <div className="absolute -bottom-16 -left-10 w-64 h-64 rounded-full bg-sea-700/30 blur-3xl animate-aurora pointer-events-none" style={{ animationDelay: '-4s' }}></div>
@@ -2972,10 +2972,7 @@ function ContactoPage({ onOpenPage, waNumber, waMsg }) {
               {/* Saludo grande */}
               <div className="text-5xl mb-4 select-none" aria-hidden="true">👋</div>
 
-              <h2 className="font-serif text-3xl md:text-4xl font-semibold mb-3">Escribinos por WhatsApp</h2>
-              <p className="text-white/90 text-base leading-relaxed mb-6 max-w-sm mx-auto">
-                Respondemos generalmente dentro de las 48 horas.
-              </p>
+              <h2 className="font-serif text-3xl md:text-4xl font-semibold mb-6">Escribinos por WhatsApp</h2>
 
               {/* Número visible */}
               <div className="inline-flex items-center gap-2 bg-white/15 rounded-2xl px-5 py-2.5 mb-8 text-white font-semibold text-lg tracking-wide">
@@ -2989,7 +2986,7 @@ function ContactoPage({ onOpenPage, waNumber, waMsg }) {
                   href={waLink}
                   target="_blank"
                   rel="noreferrer"
-                  className="btn btn-ondark btn-lg inline-flex items-center gap-2"
+                  className="btn btn-whatsapp btn-lg inline-flex items-center gap-2"
                   aria-label="Abrir WhatsApp para escribirnos"
                 >
                   {IconWA}
