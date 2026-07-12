@@ -67,9 +67,10 @@
   .reveal.visible { opacity: 1; transform: none; }
 
   /* Transición al cambiar de ventana/vista */
-  .view-anim { animation: viewIn .5s cubic-bezier(.22,.61,.36,1) both; }
+  .view-anim { animation: viewIn .55s cubic-bezier(.16,1,.3,1) both; }
   @keyframes viewIn {
-    0% { opacity: 0; transform: translateY(16px) scale(0.992); }
+    0%   { opacity: 0; transform: translateY(20px) scale(0.99); }
+    55%  { opacity: 1; }
     100% { opacity: 1; transform: translateY(0) scale(1); }
   }
 
@@ -85,6 +86,9 @@
   @media (prefers-reduced-motion: reduce) {
     .view-anim, .drawer-panel { animation: none !important; }
     .drawer-stagger > * { animation: none !important; opacity: 1 !important; }
+    .btn { transition: background-color .2s ease, color .2s ease, border-color .2s ease !important; }
+    .btn:hover, .btn:active { transform: none !important; }
+    .btn::before { display: none !important; }
   }
 
   /* ===== Sistema unificado de botones ===== */
@@ -111,17 +115,17 @@
   .btn::before {
     content: "";
     position: absolute;
-    top: 0; left: -120%;
-    width: 60%; height: 100%;
-    background: linear-gradient(100deg, transparent, rgba(255,255,255,.5), transparent);
+    top: 0; left: -125%;
+    width: 75%; height: 100%;
+    background: linear-gradient(100deg, transparent, rgba(255,255,255,.65), transparent);
     transform: skewX(-18deg);
-    transition: left .6s cubic-bezier(.22,.61,.36,1);
+    transition: left .7s cubic-bezier(.16,1,.3,1);
     z-index: -1;
     pointer-events: none;
   }
-  .btn:hover::before { left: 130%; }
+  .btn:hover::before { left: 135%; }
   .btn:hover { transform: translateY(-3px); }
-  .btn:active { transform: translateY(-1px) scale(.97); transition-duration: .09s; }
+  .btn:active { transform: translateY(-1px) scale(.97); transition: transform .12s cubic-bezier(.22,.61,.36,1); }
   .btn:focus-visible { outline: none; box-shadow: 0 0 0 4px rgba(119,188,176,.45); }
 
   /* Primario — verde-mar sereno */
@@ -827,7 +831,22 @@ function SlideViewer({ slides }) {
 
 /* ===== estado-del-mar.05-meditation-player.js ===== */
 
-function MeditationPlayer({ meditation }) {
+function MeditationPlayer({ meditation, audioUrl }) {
+  // Si hay un audio real cargado desde el panel, usamos un reproductor real.
+  if (audioUrl) {
+    return (
+      <div className="max-w-xl mx-auto py-4">
+        <div className="bg-gradient-to-br from-mist-400 to-sea-600 rounded-3xl shadow-lg shadow-mist-200/50 p-8 md:p-10 text-center text-white">
+          <p className="text-xs uppercase tracking-widest text-white/80 mb-2">Meditación guiada</p>
+          <h4 className="font-serif text-2xl md:text-3xl mb-2">{meditation.title}</h4>
+          <p className="text-white/90 text-sm mb-6">{meditation.description}</p>
+          <audio src={audioUrl} controls className="w-full rounded-full"></audio>
+        </div>
+      </div>
+    );
+  }
+
+  // Reproductor de ejemplo (cuando todavía no se cargó un audio real).
   const [playing, setPlaying] = React.useState(false);
   const [progress, setProgress] = React.useState(0);
   const totalMinutes = parseInt(meditation.duration) || 6;
@@ -867,7 +886,18 @@ function MeditationPlayer({ meditation }) {
         </div>
         <p className="text-xs text-white/80">{elapsedMin}:{String(elapsedSec).padStart(2,'0')} / {meditation.duration}</p>
       </div>
-      <p className="text-center text-xs text-sea-400 mt-4">Audio de ejemplo — acá se integraría el archivo de audio real.</p>
+      <p className="text-center text-xs text-sea-400 mt-4">Audio de ejemplo — cargá el audio real desde el panel de administración.</p>
+    </div>
+  );
+}
+
+function VideoPlayer({ src }) {
+  return (
+    <div className="max-w-2xl mx-auto py-4">
+      <div className="rounded-3xl overflow-hidden shadow-lg shadow-mist-200/50 bg-black">
+        <video src={src} controls playsInline className="w-full max-h-[70vh] bg-black"></video>
+      </div>
+      <p className="text-center text-xs text-sea-400 mt-4">Video de la ventana.</p>
     </div>
   );
 }
@@ -993,19 +1023,19 @@ function Header({ loggedIn, subscribed, onNav, onNavigateSection, onOpenPage, on
         </nav>
         <div className="flex items-center gap-2">
           {loggedIn ? (
-            <button onClick={onOpenAccount} className="btn btn-soft btn-sm">Mi cuenta</button>
+            <button onClick={onOpenAccount} className="hidden md:inline-flex btn btn-soft btn-sm">Mi cuenta</button>
           ) : (
             <React.Fragment>
-              <button onClick={onOpenAuth} className="hidden sm:inline-flex btn btn-ghost btn-sm">
+              <button onClick={onOpenAuth} className="hidden md:inline-flex btn btn-ghost btn-sm">
                 Ingresar
               </button>
-              <button onClick={onOpenRegister} className="btn btn-soft btn-sm">
+              <button onClick={onOpenRegister} className="hidden md:inline-flex btn btn-soft btn-sm">
                 Registrarse
               </button>
             </React.Fragment>
           )}
           {!subscribed && (
-            <button onClick={onOpenSubscribe} className="hidden sm:inline-flex btn btn-coral btn-sm">
+            <button onClick={onOpenSubscribe} className="hidden md:inline-flex btn btn-coral btn-sm">
               Suscribirme
             </button>
           )}
@@ -1025,9 +1055,20 @@ function Header({ loggedIn, subscribed, onNav, onNavigateSection, onOpenPage, on
               {item.label}
             </button>
           ))}
-          {!loggedIn && (
-            <button onClick={() => { setMobileOpen(false); onOpenAuth(); }} className="text-left text-sea-700 font-semibold py-2 px-3 rounded-xl hover:bg-mist-50 transition-colors">Ingresar</button>
-          )}
+          {/* Acciones de sesión: dentro del menú desplegable en móvil */}
+          <div className="mt-2 pt-3 border-t border-mist-100 flex flex-col gap-2">
+            {loggedIn ? (
+              <button onClick={() => { setMobileOpen(false); onOpenAccount(); }} className="btn btn-soft btn-block">Mi cuenta</button>
+            ) : (
+              <React.Fragment>
+                <button onClick={() => { setMobileOpen(false); onOpenAuth(); }} className="btn btn-ghost btn-block">Ingresar</button>
+                <button onClick={() => { setMobileOpen(false); onOpenRegister(); }} className="btn btn-coral btn-block">Registrarse</button>
+              </React.Fragment>
+            )}
+            {!subscribed && (
+              <button onClick={() => { setMobileOpen(false); onOpenSubscribe(); }} className="btn btn-primary btn-block">Suscribirme</button>
+            )}
+          </div>
         </nav>
       )}
     </header>
@@ -1467,6 +1508,7 @@ function TopicDetail({ topic, subscribed, onBack, onOpenSubscribe }) {
   const tabs = [
     { id: 'checkin', label: 'Check-in' },
     { id: 'contenido', label: 'Contenido' },
+    ...(topic.video_url ? [{ id: 'video', label: 'Video' }] : []),
     { id: 'meditacion', label: 'Meditación' },
     { id: 'ejercicio', label: 'Ejercicio' },
   ];
@@ -1507,7 +1549,8 @@ function TopicDetail({ topic, subscribed, onBack, onOpenSubscribe }) {
           </div>
           {tab === 'checkin' && <DiagnosticQuiz key={topic.id + '-quiz'} topic={topic} />}
           {tab === 'contenido' && <SlideViewer slides={topic.slides} />}
-          {tab === 'meditacion' && <MeditationPlayer meditation={topic.meditation} />}
+          {tab === 'video' && topic.video_url && <VideoPlayer src={topic.video_url} />}
+          {tab === 'meditacion' && <MeditationPlayer meditation={topic.meditation} audioUrl={topic.audio_url} />}
           {tab === 'ejercicio' && <ExerciseChecklist exercise={topic.exercise} />}
         </div>
       )}
@@ -1516,6 +1559,60 @@ function TopicDetail({ topic, subscribed, onBack, onOpenSubscribe }) {
 }
 
 /* ===== estado-del-mar.11-admin-panel.js ===== */
+
+// Sube un archivo al bucket "media" de Supabase Storage y devuelve la URL pública.
+async function uploadMedia(file, prefix) {
+  try {
+    const ext = (file.name.split('.').pop() || 'bin').toLowerCase();
+    const path = (prefix || 'archivo') + '/' + Date.now() + '-' + Math.random().toString(36).slice(2, 8) + '.' + ext;
+    const { error } = await sb.storage.from('media').upload(path, file, { cacheControl: '3600', upsert: false });
+    if (error) return { error: error.message };
+    const { data } = sb.storage.from('media').getPublicUrl(path);
+    return { url: data.publicUrl };
+  } catch (e) {
+    return { error: String(e) };
+  }
+}
+
+// Campo reutilizable para subir un archivo (video o audio) desde el navegador.
+function MediaUploader({ label, accept, prefix, value, onChange, hint, kind }) {
+  const [uploading, setUploading] = React.useState(false);
+  const [err, setErr] = React.useState('');
+  const inputRef = React.useRef(null);
+
+  async function handleFile(e) {
+    const file = e.target.files && e.target.files[0];
+    if (!file) return;
+    setErr(''); setUploading(true);
+    const res = await uploadMedia(file, prefix);
+    setUploading(false);
+    if (res.error) { setErr('No se pudo subir: ' + res.error); return; }
+    onChange(res.url);
+    if (inputRef.current) inputRef.current.value = '';
+  }
+
+  return (
+    <div>
+      <label className="text-sm font-semibold text-sea-700 block mb-1">{label}</label>
+      {value ? (
+        <div className="mb-2 rounded-xl border border-mist-200 bg-mist-50 p-3">
+          {kind === 'video'
+            ? <video src={value} controls className="w-full rounded-lg max-h-52 bg-black"></video>
+            : <audio src={value} controls className="w-full"></audio>}
+          <div className="flex items-center gap-3 mt-2">
+            <span className="text-xs text-mist-700 font-semibold">Archivo cargado ✓</span>
+            <button onClick={() => onChange('')} className="btn-link text-xs text-red-500 hover:text-red-700">Quitar</button>
+          </div>
+        </div>
+      ) : null}
+      <input ref={inputRef} type="file" accept={accept} onChange={handleFile}
+        className="block w-full text-sm text-sea-600 file:mr-3 file:py-2 file:px-4 file:rounded-full file:border-0 file:bg-mist-100 file:text-mist-700 file:font-semibold hover:file:bg-mist-200 file:cursor-pointer cursor-pointer" />
+      {uploading && <p className="text-sm text-mist-600 mt-1 animate-fadein">Subiendo archivo… no cierres esta ventana.</p>}
+      {err && <p className="text-sm text-red-600 mt-1">{err}</p>}
+      {hint && <p className="text-xs text-sea-400 mt-1">{hint}</p>}
+    </div>
+  );
+}
 
 function TopicEditForm({ topic, onSave, onCancel }) {
   const isNew = !topic;
@@ -1531,6 +1628,19 @@ function TopicEditForm({ topic, onSave, onCancel }) {
   const [medDescription, setMedDescription] = React.useState(topic ? topic.meditation.description : '');
   const [exerciseTitle, setExerciseTitle] = React.useState(topic ? topic.exercise.title : '');
   const [stepsText, setStepsText] = React.useState(topic ? topic.exercise.steps.join('\n') : '');
+  // NUEVO: media + preguntas + niveles
+  const [videoUrl, setVideoUrl] = React.useState((topic && topic.video_url) || '');
+  const [audioUrl, setAudioUrl] = React.useState((topic && topic.audio_url) || '');
+  const [questionsText, setQuestionsText] = React.useState(
+    topic && topic.questions ? topic.questions.map(q => q.text).join('\n') : ''
+  );
+  const baseLevels = (topic && topic.levels && topic.levels.length) ? topic.levels : makeDefaultLevels();
+  const [levels, setLevels] = React.useState(baseLevels.map(l => ({ ...l })));
+  function setLevelField(i, field, val) {
+    setLevels(ls => ls.map((l, idx) => idx === i ? { ...l, [field]: val } : l));
+  }
+
+  const inp = "w-full border border-mist-200 rounded-xl px-4 py-2.5 focus:outline-none focus:border-mist-400 focus:ring-4 focus:ring-mist-100 transition-all";
 
   function handleSave() {
     const slides = slidesText.split('\n').map(l => l.trim()).filter(Boolean).map(line => {
@@ -1538,8 +1648,9 @@ function TopicEditForm({ topic, onSave, onCancel }) {
       return { title: (t || '').trim(), text: rest.join('::').trim() || (t || '').trim() };
     });
     const steps = stepsText.split('\n').map(l => l.trim()).filter(Boolean);
+    const questions = questionsText.split('\n').map(l => l.trim()).filter(Boolean).map(text => ({ text }));
 
-    const base = topic || { id: slugify(title), questions: makeDefaultQuiz(title || 'este tema'), levels: makeDefaultLevels() };
+    const base = topic || { id: slugify(title), questions: makeDefaultQuiz(title || 'este tema'), levels: makeDefaultLevels(), sort_order: Date.now() };
 
     const updated = {
       ...base,
@@ -1547,26 +1658,28 @@ function TopicEditForm({ topic, onSave, onCancel }) {
       slides: slides.length ? slides : (base.slides || []),
       meditation: { title: medTitle, duration: medDuration, description: medDescription },
       exercise: { title: exerciseTitle, steps: steps.length ? steps : (base.exercise ? base.exercise.steps : []) },
+      questions: questions.length ? questions : base.questions,
+      levels: levels,
+      video_url: videoUrl || null,
+      audio_url: audioUrl || null,
+      sort_order: (base.sort_order != null ? base.sort_order : 0),
     };
     onSave(updated);
   }
 
   return (
-    <div className="bg-white rounded-3xl border border-sea-100 p-6 md:p-8 space-y-5">
+    <div className="bg-white rounded-3xl border border-mist-100 p-6 md:p-8 space-y-6">
       <h3 className="font-serif text-2xl text-sea-900">{isNew ? 'Nueva ventana' : 'Editar ventana: ' + topic.title}</h3>
-      {isNew && (
-        <p className="text-xs text-amber-600 bg-amber-50 border border-amber-200 rounded-xl px-3 py-2">
-          Las ventanas nuevas arrancan con un check-in genérico de 4 preguntas, que después se puede personalizar.
-        </p>
-      )}
+
+      {/* Básicos */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div>
           <label className="text-sm font-semibold text-sea-700 block mb-1">Título</label>
-          <input value={title} onChange={e => setTitle(e.target.value)} className="w-full border border-mist-200 rounded-xl px-4 py-2.5 focus:outline-none focus:border-mist-400 focus:ring-4 focus:ring-mist-100 transition-all" placeholder="Ej: Autoestima" />
+          <input value={title} onChange={e => setTitle(e.target.value)} className={inp} placeholder="Ej: Autoestima" />
         </div>
         <div>
           <label className="text-sm font-semibold text-sea-700 block mb-1">Ícono (emoji)</label>
-          <select value={emoji} onChange={e => setEmoji(e.target.value)} className="w-full border border-mist-200 rounded-xl px-4 py-2.5 focus:outline-none focus:border-mist-400 focus:ring-4 focus:ring-mist-100 transition-all">
+          <select value={emoji} onChange={e => setEmoji(e.target.value)} className={inp}>
             {EMOJI_PRESETS.map(em => <option key={em} value={em}>{em}</option>)}
           </select>
         </div>
@@ -1576,50 +1689,101 @@ function TopicEditForm({ topic, onSave, onCancel }) {
         <div className="flex flex-wrap gap-2">
           {GRADIENT_PRESETS.map(g => (
             <button key={g} onClick={() => setGradient(g)}
-              className={"w-10 h-10 rounded-full bg-gradient-to-br " + g + " border-2 " + (gradient === g ? "border-sea-900" : "border-white")}>
+              className={"w-10 h-10 rounded-full bg-gradient-to-br " + g + " border-2 transition-transform hover:scale-110 " + (gradient === g ? "border-sea-900 scale-110" : "border-white")}>
             </button>
           ))}
         </div>
       </div>
       <div>
         <label className="text-sm font-semibold text-sea-700 block mb-1">Descripción corta</label>
-        <textarea value={description} onChange={e => setDescription(e.target.value)} rows="2" className="w-full border border-mist-200 rounded-xl px-4 py-2.5 focus:outline-none focus:border-mist-400 focus:ring-4 focus:ring-mist-100 transition-all" />
+        <textarea value={description} onChange={e => setDescription(e.target.value)} rows="2" className={inp} />
       </div>
-      <div>
-        <label className="text-sm font-semibold text-sea-700 block mb-1">Diapositivas de contenido (una por línea, formato "Título :: Texto")</label>
-        <textarea value={slidesText} onChange={e => setSlidesText(e.target.value)} rows="5" className="w-full border border-sea-200 rounded-xl px-4 py-2.5 font-mono text-xs" />
+
+      {/* Media */}
+      <div className="border-t border-mist-100 pt-5 space-y-4">
+        <p className="font-serif text-lg text-sea-900">Video y audio</p>
+        <MediaUploader
+          label="Video de la ventana"
+          accept="video/*"
+          prefix="videos"
+          kind="video"
+          value={videoUrl}
+          onChange={setVideoUrl}
+          hint="Subí un archivo de video (mp4 recomendado). Ojo: el plan gratis de Supabase es limitado para video — ideal videos cortos o pocos. Para una videoteca grande conviene Bunny Stream."
+        />
+        <MediaUploader
+          label="Audio de la meditación (opcional)"
+          accept="audio/*"
+          prefix="audios"
+          kind="audio"
+          value={audioUrl}
+          onChange={setAudioUrl}
+          hint="Subí el audio real de la meditación (mp3). Si lo dejás vacío, se usa el reproductor de ejemplo."
+        />
       </div>
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+
+      {/* Check-in */}
+      <div className="border-t border-mist-100 pt-5 space-y-4">
+        <p className="font-serif text-lg text-sea-900">Check-in (diagnóstico)</p>
         <div>
-          <label className="text-sm font-semibold text-sea-700 block mb-1">Título meditación</label>
-          <input value={medTitle} onChange={e => setMedTitle(e.target.value)} className="w-full border border-mist-200 rounded-xl px-4 py-2.5 focus:outline-none focus:border-mist-400 focus:ring-4 focus:ring-mist-100 transition-all" />
+          <label className="text-sm font-semibold text-sea-700 block mb-1">Preguntas (una por línea)</label>
+          <textarea value={questionsText} onChange={e => setQuestionsText(e.target.value)} rows="4" className={inp} placeholder={"¿Sentís que...?\n¿Te cuesta...?"} />
+          <p className="text-xs text-sea-400 mt-1">Cada pregunta se responde con: Nunca / A veces / Frecuentemente / Casi siempre.</p>
         </div>
         <div>
-          <label className="text-sm font-semibold text-sea-700 block mb-1">Duración</label>
-          <input value={medDuration} onChange={e => setMedDuration(e.target.value)} className="w-full border border-mist-200 rounded-xl px-4 py-2.5 focus:outline-none focus:border-mist-400 focus:ring-4 focus:ring-mist-100 transition-all" placeholder="6 min" />
+          <label className="text-sm font-semibold text-sea-700 block mb-2">Resultados según el puntaje</label>
+          <div className="space-y-3">
+            {levels.map((lv, i) => (
+              <div key={i} className="rounded-xl border border-mist-100 p-3 bg-mist-50/50">
+                <p className="text-xs font-bold text-mist-600 mb-2">Puntaje {lv.min}–{lv.max}</p>
+                <input value={lv.label} onChange={e => setLevelField(i, 'label', e.target.value)} className={inp + " mb-2"} placeholder="Título del resultado (ej: Marea calma)" />
+                <textarea value={lv.message} onChange={e => setLevelField(i, 'message', e.target.value)} rows="2" className={inp} placeholder="Mensaje para la persona" />
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* Contenido */}
+      <div className="border-t border-mist-100 pt-5 space-y-4">
+        <p className="font-serif text-lg text-sea-900">Contenido</p>
+        <div>
+          <label className="text-sm font-semibold text-sea-700 block mb-1">Diapositivas (una por línea, formato "Título :: Texto")</label>
+          <textarea value={slidesText} onChange={e => setSlidesText(e.target.value)} rows="5" className={inp + " font-mono text-xs"} />
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div>
+            <label className="text-sm font-semibold text-sea-700 block mb-1">Título meditación</label>
+            <input value={medTitle} onChange={e => setMedTitle(e.target.value)} className={inp} />
+          </div>
+          <div>
+            <label className="text-sm font-semibold text-sea-700 block mb-1">Duración</label>
+            <input value={medDuration} onChange={e => setMedDuration(e.target.value)} className={inp} placeholder="6 min" />
+          </div>
+          <div>
+            <label className="text-sm font-semibold text-sea-700 block mb-1">Descripción meditación</label>
+            <input value={medDescription} onChange={e => setMedDescription(e.target.value)} className={inp} />
+          </div>
         </div>
         <div>
-          <label className="text-sm font-semibold text-sea-700 block mb-1">Descripción meditación</label>
-          <input value={medDescription} onChange={e => setMedDescription(e.target.value)} className="w-full border border-mist-200 rounded-xl px-4 py-2.5 focus:outline-none focus:border-mist-400 focus:ring-4 focus:ring-mist-100 transition-all" />
+          <label className="text-sm font-semibold text-sea-700 block mb-1">Título del ejercicio</label>
+          <input value={exerciseTitle} onChange={e => setExerciseTitle(e.target.value)} className={inp} />
+        </div>
+        <div>
+          <label className="text-sm font-semibold text-sea-700 block mb-1">Pasos del ejercicio (uno por línea)</label>
+          <textarea value={stepsText} onChange={e => setStepsText(e.target.value)} rows="4" className={inp} />
         </div>
       </div>
-      <div>
-        <label className="text-sm font-semibold text-sea-700 block mb-1">Título del ejercicio</label>
-        <input value={exerciseTitle} onChange={e => setExerciseTitle(e.target.value)} className="w-full border border-mist-200 rounded-xl px-4 py-2.5 focus:outline-none focus:border-mist-400 focus:ring-4 focus:ring-mist-100 transition-all" />
-      </div>
-      <div>
-        <label className="text-sm font-semibold text-sea-700 block mb-1">Pasos del ejercicio (uno por línea)</label>
-        <textarea value={stepsText} onChange={e => setStepsText(e.target.value)} rows="4" className="w-full border border-mist-200 rounded-xl px-4 py-2.5 focus:outline-none focus:border-mist-400 focus:ring-4 focus:ring-mist-100 transition-all" />
-      </div>
-      <div className="flex gap-3 pt-2">
-        <button onClick={handleSave} className="btn btn-primary">Guardar</button>
-        <button onClick={onCancel} className="btn btn-ghost">Cancelar</button>
+
+      <div className="flex gap-3 pt-2 border-t border-mist-100">
+        <button onClick={handleSave} className="btn btn-primary mt-4">Guardar ventana</button>
+        <button onClick={onCancel} className="btn btn-ghost mt-4">Cancelar</button>
       </div>
     </div>
   );
 }
 
-function AdminPanel({ topics, price, setPrice, onExit, onSaveTopic, onDeleteTopic, onSeedInitial }) {
+function AdminPanel({ topics, price, setPrice, onExit, onSaveTopic, onDeleteTopic, onSeedInitial, onReorder }) {
   const [editingId, setEditingId] = React.useState(null);
   const [creating, setCreating] = React.useState(false);
   const [saving, setSaving] = React.useState(false);
@@ -1653,7 +1817,7 @@ function AdminPanel({ topics, price, setPrice, onExit, onSaveTopic, onDeleteTopi
         <div className="max-w-5xl mx-auto px-6 py-8 flex items-center justify-between">
           <div>
             <h1 className="font-serif text-3xl font-semibold">Panel de administración</h1>
-            <p className="text-white/80 text-sm mt-1">Modo demo — los cambios se guardan solo en esta sesión del navegador.</p>
+            <p className="text-white/80 text-sm mt-1">Todo lo que edites acá se guarda y queda publicado para todos.</p>
           </div>
           <button onClick={onExit} className="btn-link text-white/90 hover:text-white text-sm font-semibold">Salir →</button>
         </div>
@@ -1689,13 +1853,22 @@ function AdminPanel({ topics, price, setPrice, onExit, onSaveTopic, onDeleteTopi
                 + Agregar ventana
               </button>
             </div>
+            <p className="text-sm text-sea-500 mb-4">Usá las flechas para cambiar el orden en que aparecen las ventanas en el sitio.</p>
             <div className="space-y-3">
-              {topics.map(t => (
-                <div key={t.id} className="bg-white rounded-2xl border border-mist-100 p-4 flex items-center gap-4 hover:shadow-md hover:shadow-mist-100 transition-shadow">
+              {topics.map((t, i) => (
+                <div key={t.id} className="bg-white rounded-2xl border border-mist-100 p-4 flex items-center gap-3 hover:shadow-md hover:shadow-mist-100 transition-shadow">
+                  <div className="flex flex-col gap-1 flex-shrink-0">
+                    <button onClick={() => onReorder(i, -1)} disabled={i === 0} title="Subir" className="w-7 h-7 rounded-lg bg-mist-50 text-sea-600 hover:bg-mist-100 disabled:opacity-30 disabled:cursor-not-allowed flex items-center justify-center text-xs transition-colors">▲</button>
+                    <button onClick={() => onReorder(i, 1)} disabled={i === topics.length - 1} title="Bajar" className="w-7 h-7 rounded-lg bg-mist-50 text-sea-600 hover:bg-mist-100 disabled:opacity-30 disabled:cursor-not-allowed flex items-center justify-center text-xs transition-colors">▼</button>
+                  </div>
                   <div className={"w-12 h-12 rounded-full bg-gradient-to-br " + t.gradient + " flex items-center justify-center text-xl flex-shrink-0"}>{t.emoji}</div>
                   <div className="flex-1 min-w-0">
                     <p className="font-semibold text-sea-900">{t.title}</p>
-                    <p className="text-sea-500 text-sm truncate">{t.description}</p>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <p className="text-sea-500 text-sm truncate max-w-[16rem]">{t.description}</p>
+                      {t.video_url && <span className="text-[10px] font-bold uppercase tracking-wide bg-coral-50 text-coral-600 rounded-full px-2 py-0.5">🎬 video</span>}
+                      {t.audio_url && <span className="text-[10px] font-bold uppercase tracking-wide bg-mist-50 text-mist-600 rounded-full px-2 py-0.5">🎧 audio</span>}
+                    </div>
                   </div>
                   <button onClick={() => setEditingId(t.id)} className="btn-link text-sea-600 hover:text-sea-900 text-sm font-semibold px-3 py-1.5">Editar</button>
                   <button onClick={() => deleteTopic(t.id)} className="btn-link text-red-500 hover:text-red-700 text-sm font-semibold px-3 py-1.5">Eliminar</button>
@@ -1909,7 +2082,7 @@ function App() {
   }, [session]);
 
   React.useEffect(() => {
-    sb.from('topics').select('*').order('created_at', { ascending: true }).then(({ data, error }) => {
+    sb.from('topics').select('*').order('sort_order', { ascending: true }).order('created_at', { ascending: true }).then(({ data, error }) => {
       if (!error && data && data.length > 0) setTopics(data);
     });
   }, []);
@@ -2011,6 +2184,23 @@ function App() {
     setTopics(prev => prev.filter(t => t.id !== id));
   }
 
+  async function reorderTopics(index, dir) {
+    const j = index + dir;
+    if (j < 0 || j >= topics.length) return;
+    const arr = [...topics];
+    const [moved] = arr.splice(index, 1);
+    arr.splice(j, 0, moved);
+    const withOrder = arr.map((t, i) => ({ ...t, sort_order: i }));
+    setTopics(withOrder);
+    // Persistir el nuevo orden (solo las que cambiaron de posición)
+    for (let i = 0; i < withOrder.length; i++) {
+      const prev = topics.find(x => x.id === withOrder[i].id);
+      if (!prev || prev.sort_order !== i) {
+        await sb.from('topics').update({ sort_order: i }).eq('id', withOrder[i].id);
+      }
+    }
+  }
+
   async function seedInitialTopics() {
     const { error } = await sb.from('topics').upsert(INITIAL_TOPICS);
     if (error) { alert('No se pudo cargar el contenido inicial: ' + error.message); return; }
@@ -2044,7 +2234,7 @@ function App() {
     }
     return (
       <div key="admin" className="view-anim">
-        <AdminPanel topics={topics} price={price} setPrice={setPrice} onExit={goHome} onSaveTopic={saveTopicToDb} onDeleteTopic={deleteTopicFromDb} onSeedInitial={seedInitialTopics} />
+        <AdminPanel topics={topics} price={price} setPrice={setPrice} onExit={goHome} onSaveTopic={saveTopicToDb} onDeleteTopic={deleteTopicFromDb} onSeedInitial={seedInitialTopics} onReorder={reorderTopics} />
       </div>
     );
   }
