@@ -2796,12 +2796,11 @@ function App() {
   }, [session && session.user ? session.user.id : null]);
 
   React.useEffect(() => {
-    // B9: si la consulta NO da error, usamos SIEMPRE data (aunque sea [] vacío).
-    // Solo mantenemos INITIAL_TOPICS si hay error de red (catch).
-    // Así un admin que vacía el catálogo a propósito lo ve vacío (puede usar "Cargar las 10 ventanas iniciales").
+    // Cargamos las ventanas de la base. Si la base todavía no tiene ninguna
+    // (tabla vacía) o hay error de red, dejamos las INITIAL_TOPICS de ejemplo,
+    // así el sitio NUNCA se ve sin ventanas.
     sb.from('topics').select('*').order('sort_order', { ascending: true }).order('created_at', { ascending: true }).then(({ data, error }) => {
-      if (!error && data != null) setTopics(data);
-      // Si hay error de red, dejamos INITIAL_TOPICS como fallback (ya cargados por defecto)
+      if (!error && data && data.length > 0) setTopics(data);
     }).catch(() => {});
   }, []);
 
