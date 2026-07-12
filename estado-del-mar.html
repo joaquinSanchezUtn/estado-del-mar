@@ -662,18 +662,37 @@ const INITIAL_TOPICS = [
   },
 ];
 
-// Recalcula los rangos min/max de cada nivel según el puntaje máximo posible (preguntas × 3).
-// Preserva labels y mensajes; solo ajusta los umbrales para que cubran 0..máximo sin huecos.
+// F1: Recalcula los rangos min/max de cada nivel según el puntaje máximo posible (preguntas × 3).
+// Garantiza: rangos contiguos, min<=max siempre, sin solapamientos, último nivel llega a maxScore.
+// Si hay más niveles que puntajes posibles, los sobrantes quedan como rangos de un punto
+// fuera del rango alcanzable pero NUNCA con min>max.
 function computeDynamicLevels(levels, questionCount) {
   if (!levels || levels.length === 0 || !questionCount || questionCount <= 0) return levels || [];
   const maxScore = questionCount * 3;
   const count = levels.length;
-  // Repartimos el rango 0..maxScore en `count` tramos iguales (el último absorbe el resto)
-  return levels.map((lv, i) => {
-    const min = Math.round((i / count) * maxScore);
-    const max = i === count - 1 ? maxScore : Math.round(((i + 1) / count) * maxScore) - 1;
-    return { ...lv, min, max };
-  });
+  const result = [];
+  let cursor = 0; // próximo min disponible
+  for (let i = 0; i < count; i++) {
+    const isLast = i === count - 1;
+    let min = cursor;
+    let max;
+    if (isLast) {
+      // El último nivel absorbe hasta maxScore (o queda en min si ya se agotaron los puntajes)
+      max = Math.max(min, maxScore);
+    } else {
+      // Repartimos el rango restante entre los niveles que quedan
+      const remaining = count - i;
+      const rangeLeft = maxScore - cursor;
+      // Tamaño del tramo (al menos 0 para no hacer min>max)
+      const step = Math.max(0, Math.round(rangeLeft / remaining));
+      max = min + step - 1;
+      // Asegurar min <= max (puede pasar si hay más niveles que puntajes)
+      if (max < min) max = min;
+    }
+    result.push({ ...levels[i], min, max });
+    cursor = max + 1;
+  }
+  return result;
 }
 
 function computeLevel(total, levels, questionCount) {
@@ -682,9 +701,12 @@ function computeLevel(total, levels, questionCount) {
   return dynLevels.find(l => total >= l.min && total <= l.max) || dynLevels[dynLevels.length - 1];
 }
 
+// F6: guard para evitar "Invalid Date" si d es nulo, vacío o un string malformado
 function formatDate(d) {
   if (!d) return '';
-  return new Date(d).toLocaleDateString('es-AR', { day: 'numeric', month: 'long', year: 'numeric' });
+  const dt = new Date(d);
+  if (isNaN(dt.getTime())) return '';
+  return dt.toLocaleDateString('es-AR', { day: 'numeric', month: 'long', year: 'numeric' });
 }
 
 function slugify(str) {
@@ -963,11 +985,12 @@ function DiagnosticQuiz({ topic, onComplete }) {
     }
   }
 
-  // M3: volver a la pregunta anterior
+  // M3 / F2: volver a la pregunta anterior — usa current como índice de verdad
+  // para no depender de que answers.length coincida con current (invariante frágil).
   function goBack() {
     if (current > 0) {
+      setAnswers(a => a.slice(0, current - 1));
       setCurrent(current - 1);
-      setAnswers(answers.slice(0, -1));
     }
   }
 
@@ -1000,7 +1023,7 @@ function DiagnosticQuiz({ topic, onComplete }) {
     <div className="max-w-xl mx-auto py-4">
       <div className="mb-6"><ProgressDots count={questions.length} current={current} /></div>
       <p className="text-center text-xs text-sea-400 mb-2">Pregunta {current + 1} de {questions.length}</p>
-      <h3 className="text-center font-serif text-2xl md:text-3xl text-sea-900 mb-8 px-2">{q.text}</h3>
+      <h3 className="text-center font-serif text-2xl md:text-3xl text-sea-900 mb-8 px-2 break-words">{q.text}</h3>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         {LIKERT.map(opt => (
           <button key={opt.label} onClick={() => choose(opt.value)}
@@ -1063,8 +1086,8 @@ function SlideViewer({ slides }) {
     <div className="max-w-xl mx-auto py-4" onTouchStart={onTouchStart} onTouchEnd={onTouchEnd}>
       <div className="bg-white rounded-3xl shadow-sm border border-mist-100 p-8 md:p-10 min-h-[220px] flex flex-col justify-center animate-fadein" key={i}>
         <p className="text-xs uppercase tracking-widest text-mist-500 mb-3">Diapositiva {i + 1} de {safeSlides.length}</p>
-        <h4 className="font-serif text-2xl md:text-3xl text-sea-900 mb-3">{slide.title}</h4>
-        <p className="text-sea-700 leading-relaxed">{slide.text}</p>
+        <h4 className="font-serif text-2xl md:text-3xl text-sea-900 mb-3 break-words">{slide.title}</h4>
+        <p className="text-sea-700 leading-relaxed break-words">{slide.text}</p>
       </div>
       <div className="flex items-center justify-between mt-6">
         <button disabled={i === 0} onClick={() => setI(i - 1)}
@@ -1134,8 +1157,8 @@ function MeditationPlayer({ meditation, audioUrl }) {
       <div className="max-w-xl mx-auto py-4">
         <div className="bg-gradient-to-br from-mist-400 to-sea-600 rounded-3xl shadow-lg shadow-mist-200/50 p-8 md:p-10 text-center text-white">
           <p className="text-xs uppercase tracking-widest text-white/80 mb-2">Meditación guiada</p>
-          <h4 className="font-serif text-2xl md:text-3xl mb-2">{meditation.title}</h4>
-          <p className="text-white/90 text-sm mb-6">{meditation.description}</p>
+          <h4 className="font-serif text-2xl md:text-3xl mb-2 break-words">{meditation.title}</h4>
+          <p className="text-white/90 text-sm mb-6 break-words">{meditation.description}</p>
           {audioError ? (
             <p className="bg-white/20 rounded-xl px-4 py-3 text-sm text-white font-semibold">
               No se pudo cargar el archivo. Verificá que se haya subido bien.
@@ -1167,8 +1190,8 @@ function MeditationPlayer({ meditation, audioUrl }) {
     <div className="max-w-xl mx-auto py-4">
       <div className="bg-gradient-to-br from-mist-400 to-sea-600 rounded-3xl shadow-lg shadow-mist-200/50 p-8 md:p-10 text-center text-white">
         <p className="text-xs uppercase tracking-widest text-white/80 mb-2">Meditación guiada</p>
-        <h4 className="font-serif text-2xl md:text-3xl mb-2">{meditation.title}</h4>
-        <p className="text-white/90 text-sm mb-8">{meditation.description}</p>
+        <h4 className="font-serif text-2xl md:text-3xl mb-2 break-words">{meditation.title}</h4>
+        <p className="text-white/90 text-sm mb-8 break-words">{meditation.description}</p>
         <button onClick={toggle}
           className={"w-16 h-16 rounded-full bg-white text-mist-600 text-2xl flex items-center justify-center mx-auto mb-6 hover:scale-110 active:scale-95 transition-transform duration-300 shadow-xl " + (playing ? "animate-breathe" : "")}>
           {playing ? '❚❚' : '▶'}
@@ -1204,20 +1227,34 @@ function VideoPlayer({ src }) {
 /* ===== estado-del-mar.06-exercise-checklist.js ===== */
 
 function ExerciseChecklist({ exercise, storageKey }) {
-  // M4: cargá el estado desde localStorage al montar (si hay storageKey)
+  // F5: firma de los pasos actuales para detectar si cambiaron desde la última vez que se guardó
+  const stepsSig = exercise && Array.isArray(exercise.steps) ? JSON.stringify(exercise.steps) : '';
+
+  // M4 / F5: cargá el estado desde localStorage al montar (si hay storageKey).
+  // Si la firma guardada no coincide con los pasos actuales, comenzá con done vacío
+  // para no marcar pasos equivocados cuando el admin reordena o cambia los pasos.
   const [done, setDone] = React.useState(() => {
     if (!storageKey) return {};
     try {
-      const saved = localStorage.getItem('edm_checklist_' + storageKey);
-      return saved ? JSON.parse(saved) : {};
+      const raw = localStorage.getItem('edm_checklist_' + storageKey);
+      if (!raw) return {};
+      const parsed = JSON.parse(raw);
+      // parsed puede ser { done: {}, sig: '' } (formato nuevo) o un objeto plano (formato viejo)
+      if (parsed && typeof parsed === 'object' && 'sig' in parsed) {
+        return parsed.sig === stepsSig ? (parsed.done || {}) : {};
+      }
+      // Formato viejo sin firma: descartamos para no marcar pasos equivocados
+      return {};
     } catch(e) { return {}; }
   });
 
-  // M4: guardá en localStorage cada vez que cambia `done`
+  // M4 / F5: guardá en localStorage cada vez que cambia `done`, junto con la firma de los pasos
   React.useEffect(() => {
     if (!storageKey) return;
-    try { localStorage.setItem('edm_checklist_' + storageKey, JSON.stringify(done)); } catch(e) {}
-  }, [done, storageKey]);
+    try {
+      localStorage.setItem('edm_checklist_' + storageKey, JSON.stringify({ done, sig: stepsSig }));
+    } catch(e) {}
+  }, [done, storageKey, stepsSig]);
 
   function toggle(i) { setDone(d => ({ ...d, [i]: !d[i] })); }
 
@@ -1264,16 +1301,16 @@ function ExerciseChecklist({ exercise, storageKey }) {
 function TopicCard({ topic, locked, onClick }) {
   return (
     <button onClick={onClick} className="group text-left animate-fadein focus:outline-none">
-      <div className={"relative rounded-full aspect-square w-full max-w-[220px] mx-auto bg-gradient-to-br " + topic.gradient + " shadow-lg shadow-mist-200/40 flex items-center justify-center border-4 border-white group-hover:scale-105 group-hover:shadow-xl group-hover:-translate-y-1 transition-all duration-300 group-hover:animate-drift group-focus-visible:ring-4 group-focus-visible:ring-mist-300"}>
-        <span className="text-5xl transition-transform duration-300 group-hover:scale-110">{topic.emoji}</span>
+      <div className={"relative rounded-full aspect-square w-full max-w-[220px] mx-auto bg-gradient-to-br " + topic.gradient + " shadow-lg shadow-mist-200/40 flex items-center justify-center border-4 border-white group-hover:scale-105 group-hover:shadow-xl group-hover:-translate-y-1 transition-all duration-300 group-hover:animate-drift group-focus-visible:ring-4 group-focus-visible:ring-mist-300 overflow-hidden"}>
+        <span className="text-5xl transition-transform duration-300 group-hover:scale-110 leading-none">{topic.emoji}</span>
         {locked && (
           <div className="absolute -bottom-1 -right-1 bg-white rounded-full w-10 h-10 flex items-center justify-center shadow-md text-lg group-hover:scale-110 transition-transform">
             <Lock />
           </div>
         )}
       </div>
-      <h3 className="font-serif text-xl font-semibold text-sea-900 text-center mt-4 group-hover:text-mist-600 transition-colors">{topic.title}</h3>
-      <p className="text-sea-600 text-sm text-center mt-1 px-2 line-clamp-2">{topic.description}</p>
+      <h3 className="font-serif text-xl font-semibold text-sea-900 text-center mt-4 group-hover:text-mist-600 transition-colors break-words">{topic.title}</h3>
+      <p className="text-sea-600 text-sm text-center mt-1 px-2 line-clamp-2 break-words">{topic.description}</p>
     </button>
   );
 }
@@ -1430,11 +1467,12 @@ function Hero({ onOpenSubscribe, topics: heroTopics }) {
         return (
           <div
             key={t.id}
-            className={"hidden md:flex absolute rounded-full bg-gradient-to-br " + t.gradient + " border-2 border-white items-center justify-center shadow-lg shadow-mist-200/50 animate-floaty pointer-events-none select-none"}
+            className={"hidden md:flex absolute rounded-full bg-gradient-to-br " + t.gradient + " border-2 border-white items-center justify-center shadow-lg shadow-mist-200/50 animate-floaty pointer-events-none select-none overflow-hidden"}
             style={{
               top: pos.top, left: pos.left, right: pos.right,
               width: pos.size + 'rem', height: pos.size + 'rem',
               fontSize: (pos.size * 0.44) + 'rem',
+              lineHeight: 1,
               animationDelay: pos.delay + 's',
               animationDuration: pos.dur + 's',
             }}>
@@ -1567,9 +1605,13 @@ function AuthModal({ intent, initialMode, onClose, onAuthed }) {
 
   async function handleGoogle() {
     setError('');
-    // M11: si la intención es suscribirse, guardá la bandera antes del redirect OAuth
+    // M11 / S3: si la intención es suscribirse, guardá la bandera antes del redirect OAuth.
+    // Usamos un marcador especial 'oauth-pending' porque en este punto aún no conocemos
+    // el email que el usuario va a usar en Google. El riesgo de cruce entre usuarios es bajo
+    // (el flujo OAuth es inmediato, sin días de espera) pero usamos un prefijo distinto
+    // para que no se confunda con el flujo de confirmación de email.
     if (intent === 'subscribe') {
-      try { localStorage.setItem('edm_pending_subscribe', '1'); } catch(e) {}
+      try { localStorage.setItem('edm_pending_subscribe', 'oauth-pending'); } catch(e) {}
     }
     const { error: err } = await sb.auth.signInWithOAuth({
       provider: 'google',
@@ -1594,9 +1636,11 @@ function AuthModal({ intent, initialMode, onClose, onAuthed }) {
       setLoading(false);
       if (err) { setError(traducirError(err.message)); return; } // M8
       if (!data.session) {
-        // Supabase requiere confirmación de email: guardamos la intención si era suscribirse
+        // Supabase requiere confirmación de email: guardamos la intención si era suscribirse.
+        // S3: guardamos el email del usuario para que, al confirmar, la suscripción
+        // solo se aplique a quien se registró con ese email (no a otro usuario en la misma compu).
         if (intent === 'subscribe') {
-          try { localStorage.setItem('edm_pending_subscribe', '1'); } catch(e) {}
+          try { localStorage.setItem('edm_pending_subscribe', email); } catch(e) {}
         }
         setNeedsConfirm(true);
         return;
@@ -1886,10 +1930,10 @@ function TopicDetail({ topic, subscribed, onBack, onOpenSubscribe }) {
         <div className="max-w-4xl mx-auto px-6 pt-10 pb-16">
           <button onClick={onBack} className="text-white/80 hover:text-white text-sm font-semibold mb-8 inline-flex items-center gap-1 hover:-translate-x-1 transition-transform duration-200">← Volver a las ventanas</button>
           <div className="flex items-center gap-5">
-            <div className="w-20 h-20 rounded-full bg-white/15 flex items-center justify-center text-4xl border-2 border-white/30">{topic.emoji}</div>
+            <div className="w-20 h-20 rounded-full bg-white/15 flex items-center justify-center text-4xl border-2 border-white/30 overflow-hidden leading-none">{topic.emoji}</div>
             <div>
-              <h1 className="font-serif text-3xl md:text-4xl font-semibold">{topic.title}</h1>
-              <p className="text-white/80 mt-1 max-w-lg">{topic.description}</p>
+              <h1 className="font-serif text-3xl md:text-4xl font-semibold break-words">{topic.title}</h1>
+              <p className="text-white/80 mt-1 max-w-lg break-words">{topic.description}</p>
             </div>
           </div>
         </div>
@@ -2165,8 +2209,21 @@ function TopicEditForm({ topic, onSave, onCancel }) {
     // Partimos del topic real para no pisar campos no editados
     const base = topic || { id: slugify(title), questions: makeDefaultQuiz(title || 'este tema'), levels: makeDefaultLevels(), sort_order: 0 };
 
-    // Emoji: si el admin escribió uno personalizado, tiene prioridad
-    const emojiFinal = emojiCustom.trim() || emoji;
+    // F4: Emoji — si el admin escribió uno personalizado, tiene prioridad.
+    // Nos quedamos solo con el primer grapheme visible para evitar que un emoji largo
+    // o compuesto desborde los círculos de la UI.
+    const rawEmoji = emojiCustom.trim() || emoji;
+    let emojiFinal = rawEmoji;
+    try {
+      if (rawEmoji && typeof Intl !== 'undefined' && Intl.Segmenter) {
+        const seg = new Intl.Segmenter();
+        const [first] = seg.segment(rawEmoji);
+        if (first) emojiFinal = first.segment;
+      } else if (rawEmoji) {
+        // Fallback: tomar el primer punto de código (puede ser el surrogate pair de un emoji)
+        emojiFinal = [...rawEmoji].slice(0, 2).join('');
+      }
+    } catch(e) { emojiFinal = rawEmoji; }
 
     const updated = {
       ...base,
@@ -2208,7 +2265,7 @@ function TopicEditForm({ topic, onSave, onCancel }) {
                 className="border border-mist-200 rounded-xl px-3 py-2.5 w-24 text-center text-xl focus:outline-none focus:border-mist-400 focus:ring-4 focus:ring-mist-100 transition-all"
                 placeholder="otro"
                 title="Escribí aquí un emoji que no esté en la lista"
-                maxLength={4}
+                maxLength={8}
               />
             </div>
             {emojiCustom.trim() && (
@@ -2302,6 +2359,12 @@ function TopicEditForm({ topic, onSave, onCancel }) {
         {/* Niveles de resultado */}
         <div>
           <label className="text-sm font-semibold text-sea-700 block mb-2">Resultados según el puntaje</label>
+          {/* F1: aviso si hay más niveles que puntajes posibles */}
+          {questions.length > 0 && levels.length > questions.length * 3 + 1 && (
+            <div className="mb-3 bg-sand-100 border border-sand-200 rounded-xl px-4 py-3 text-sm text-sea-700">
+              Tenés más niveles que puntajes posibles; algunos no se van a poder alcanzar. Agregá preguntas o quitá niveles.
+            </div>
+          )}
           <div className="space-y-3">
             {(() => {
               const qCount = questions.length;
@@ -2851,16 +2914,22 @@ function App() {
     });
     const { data: listener } = sb.auth.onAuthStateChange((_event, newSession) => {
       setSession(newSession);
-      // Si hay una suscripción pendiente (el usuario confirmó su email después de registrarse),
-      // la activamos automáticamente y limpiamos la bandera
+      // S3: Si hay una suscripción pendiente (el usuario confirmó su email después de registrarse),
+      // la activamos automáticamente SOLO si el email guardado coincide con el del usuario que acaba de
+      // loguearse. Esto evita que la bandera se aplique a otro usuario en la misma computadora.
+      // El caso 'oauth-pending' se aplica sin restricción de email (flujo OAuth inmediato sin delay).
       if (newSession && newSession.user) {
         try {
           const pending = localStorage.getItem('edm_pending_subscribe');
-          if (pending === '1') {
+          if (pending) {
+            // Siempre limpiamos la bandera para no dejarla colgada
             localStorage.removeItem('edm_pending_subscribe');
-            sb.from('profiles').upsert({ id: newSession.user.id, subscribed: true, subscribed_at: new Date().toISOString() }).then(({ error }) => {
-              if (!error) setProfile(p => ({ ...(p || { id: newSession.user.id }), subscribed: true, subscribed_at: new Date().toISOString() }));
-            });
+            const aplicar = pending === 'oauth-pending' || pending === newSession.user.email;
+            if (aplicar) {
+              sb.from('profiles').upsert({ id: newSession.user.id, subscribed: true, subscribed_at: new Date().toISOString() }).then(({ error }) => {
+                if (!error) setProfile(p => ({ ...(p || { id: newSession.user.id }), subscribed: true, subscribed_at: new Date().toISOString() }));
+              });
+            }
           }
         } catch(e) {}
       }
@@ -2907,6 +2976,16 @@ function App() {
     }
   }, [view, pendingScroll]);
 
+  // F7: si estamos en 'detail' pero el topic ya no existe (fue borrado o aún no cargó),
+  // navegamos a home desde un effect para nunca llamar setState durante el render.
+  React.useEffect(() => {
+    if (view === 'detail' && activeTopicId && !topics.find(t => t.id === activeTopicId)) {
+      setView('home');
+      setActiveTopicId(null);
+      window.scrollTo(0, 0);
+    }
+  }, [view, activeTopicId, topics]);
+
   // M5: helper para cerrar overlays al navegar
   function closeOverlays() { setShowProfile(false); setShowAuthModal(false); }
 
@@ -2932,7 +3011,8 @@ function App() {
 
   async function markSubscribedForUser(userId) {
     const { error } = await sb.from('profiles').upsert({ id: userId, subscribed: true, subscribed_at: new Date().toISOString() });
-    if (error) { console.error('Error al suscribir:', error.message); return; }
+    // S2: mostrar error en español al usuario, no solo en consola
+    if (error) { console.error('Error al suscribir:', error.message); alert(traducirError(error.message)); return; }
     setProfile(p => ({ ...(p || { id: userId }), subscribed: true, subscribed_at: new Date().toISOString() }));
   }
 
@@ -2952,7 +3032,8 @@ function App() {
     setSubscribing(true);
     try {
       const { error } = await sb.from('profiles').upsert({ id: session.user.id, subscribed: false });
-      if (error) { console.error('Error al cancelar suscripción:', error.message); return; }
+      // S2: mostrar error en español al usuario, no solo en consola
+      if (error) { console.error('Error al cancelar suscripción:', error.message); alert(traducirError(error.message)); return; }
       setProfile(p => ({ ...(p || {}), subscribed: false }));
     } finally {
       setSubscribing(false);
@@ -3181,7 +3262,9 @@ function App() {
 
   if (view === 'detail') {
     const topic = topics.find(t => t.id === activeTopicId);
-    if (!topic) { goHome(); return null; }
+    // F7: si el topic no existe, el useEffect de arriba ya va a navegar a home.
+    // Retornamos null sin llamar goHome() en el render (eso violaría las reglas de React).
+    if (!topic) { return null; }
     return (
       <React.Fragment>
         {headerEl}

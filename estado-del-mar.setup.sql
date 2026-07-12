@@ -5,13 +5,23 @@
 -- ============================================================
 
 -- 1) Perfil de cada suscriptor (además de lo que ya guarda Supabase Auth)
+-- S4: full_name y el resto de datos personales ya están en CREATE TABLE para que
+--     el trigger handle_new_user nunca referencie una columna inexistente si el
+--     script se corre por partes. Las secciones posteriores repiten ADD COLUMN IF NOT EXISTS
+--     (idempotente) por compatibilidad con bases ya existentes.
 create table if not exists public.profiles (
   id uuid references auth.users on delete cascade primary key,
   email text,
   subscribed boolean default false,
   subscribed_at timestamp with time zone,
   is_admin boolean default false,
-  created_at timestamp with time zone default now()
+  created_at timestamp with time zone default now(),
+  full_name text,
+  phone text,
+  country text,
+  city text,
+  birth_date date,
+  motivation text
 );
 
 -- 2) Crear el perfil automáticamente apenas alguien se registra
@@ -55,10 +65,20 @@ create policy "ver_mi_perfil"
   on public.profiles for select
   using (auth.uid() = id);
 
+-- S1: el usuario puede editar su propio perfil, pero NO puede cambiar is_admin.
+-- El WITH CHECK compara el nuevo valor de is_admin contra el que ya tiene en la base,
+-- para que nunca pueda escribir is_admin=true desde la consola de Supabase.
+-- NOTA: subscribed se deja modificable a propósito (la suscripción es demo sin pago real).
+-- Cuando se integren pagos reales, habrá que agregar un check similar para subscribed
+-- y manejar esa columna solo desde funciones server-side con security definer.
 drop policy if exists "editar_mi_perfil" on public.profiles;
 create policy "editar_mi_perfil"
   on public.profiles for update
-  using (auth.uid() = id);
+  using (auth.uid() = id)
+  with check (
+    auth.uid() = id
+    and is_admin = (select p.is_admin from public.profiles p where p.id = auth.uid())
+  );
 
 -- 6) Políticas de ventanas: lectura pública (el menú lo ve todo el mundo),
 --    escritura solo para quien tenga is_admin = true en su perfil
