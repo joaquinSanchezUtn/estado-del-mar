@@ -2963,22 +2963,16 @@ function ContactoPage({ onOpenPage, waNumber, waMsg }) {
 
         {/* --- Panel principal de WhatsApp --- */}
         <Reveal>
-          <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-mist-400 to-sea-600 text-white shadow-2xl shadow-mist-200/50">
+          <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-mist-50 to-sand-50 border border-mist-100 shadow-xl shadow-mist-200/40">
             {/* Orbes decorativas */}
-            <div className="absolute -top-12 -right-12 w-56 h-56 rounded-full bg-white/10 blur-3xl animate-aurora pointer-events-none"></div>
-            <div className="absolute -bottom-16 -left-10 w-64 h-64 rounded-full bg-sea-700/30 blur-3xl animate-aurora pointer-events-none" style={{ animationDelay: '-4s' }}></div>
+            <div className="absolute -top-12 -right-12 w-56 h-56 rounded-full bg-coral-200/30 blur-3xl animate-aurora pointer-events-none"></div>
+            <div className="absolute -bottom-16 -left-10 w-64 h-64 rounded-full bg-mist-200/40 blur-3xl animate-aurora pointer-events-none" style={{ animationDelay: '-4s' }}></div>
 
             <div className="relative z-10 px-8 py-10 md:py-14 text-center">
-              {/* Saludo grande */}
-              <div className="text-5xl mb-4 select-none" aria-hidden="true">👋</div>
-
-              <h2 className="font-serif text-3xl md:text-4xl font-semibold mb-6">Escribinos por WhatsApp</h2>
-
-              {/* Número visible */}
-              <div className="inline-flex items-center gap-2 bg-white/15 rounded-2xl px-5 py-2.5 mb-8 text-white font-semibold text-lg tracking-wide">
-                <span aria-hidden="true">📱</span>
-                <span aria-label={"Número de WhatsApp: " + numWa}>+{numWa}</span>
-              </div>
+              <h2 className="font-serif text-3xl md:text-4xl font-semibold text-sea-900 mb-4">Estamos para ayudarte</h2>
+              <p className="text-sea-600 text-base md:text-lg leading-relaxed mb-8 max-w-md mx-auto">
+                Por cualquier tipo de consulta no dudes en comunicarte con nosotros por WhatsApp.
+              </p>
 
               {/* Botón CTA */}
               <div>
@@ -2994,7 +2988,7 @@ function ContactoPage({ onOpenPage, waNumber, waMsg }) {
                 </a>
               </div>
 
-              <p className="text-white/70 text-xs mt-5">
+              <p className="text-sea-500 text-xs mt-5">
                 Se abre con un mensaje ya escrito — podés editarlo antes de enviar.
               </p>
             </div>
