@@ -157,6 +157,10 @@ create policy "insertar_mi_perfil"
   on public.profiles for insert
   with check (auth.uid() = id);
 
+-- 12) Configuración de WhatsApp editable desde el panel de administración (B10)
+alter table public.app_config add column if not exists whatsapp text;
+alter table public.app_config add column if not exists whatsapp_msg text;
+
 -- ============================================================
 -- PASO MANUAL (hacer DESPUÉS de registrarte una vez en el sitio):
 -- reemplazá el email por el que usaste para registrarte, y ejecutá
