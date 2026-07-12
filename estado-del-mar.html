@@ -2080,7 +2080,7 @@ function TopicEditForm({ topic, onSave, onCancel }) {
     }
 
     // Partimos del topic real para no pisar campos no editados
-    const base = topic || { id: slugify(title), questions: makeDefaultQuiz(title || 'este tema'), levels: makeDefaultLevels(), sort_order: Date.now() };
+    const base = topic || { id: slugify(title), questions: makeDefaultQuiz(title || 'este tema'), levels: makeDefaultLevels(), sort_order: 0 };
 
     // Emoji: si el admin escribió uno personalizado, tiene prioridad
     const emojiFinal = emojiCustom.trim() || emoji;
@@ -2920,11 +2920,21 @@ function App() {
   }
 
   async function saveTopicToDb(updated) {
-    const { error } = await sb.from('topics').upsert(updated);
+    // sort_order es una columna integer (máx ~2.147.000.000): normalizamos para evitar
+    // valores fuera de rango. Una ventana nueva (o con orden inválido) va al final.
+    const INT_MAX = 2147483647;
+    const exists = topics.some(t => t.id === updated.id);
+    let orden = updated.sort_order;
+    if (!exists || orden == null || !Number.isFinite(orden) || orden > INT_MAX || orden < 0) {
+      const maxOrden = topics.reduce((m, t) => Math.max(m, Number.isFinite(t.sort_order) ? t.sort_order : 0), -1);
+      orden = maxOrden + 1;
+    }
+    const fixed = { ...updated, sort_order: orden };
+    const { error } = await sb.from('topics').upsert(fixed);
     if (error) { alert('No se pudo guardar: ' + traducirError(error.message)); return; } // M8
     setTopics(prev => {
-      const exists = prev.some(t => t.id === updated.id);
-      return exists ? prev.map(t => t.id === updated.id ? updated : t) : [...prev, updated];
+      const yaExiste = prev.some(t => t.id === fixed.id);
+      return yaExiste ? prev.map(t => t.id === fixed.id ? fixed : t) : [...prev, fixed];
     });
   }
 
