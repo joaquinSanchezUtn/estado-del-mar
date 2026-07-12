@@ -1926,33 +1926,48 @@ function MediaUploader({ label, accept, prefix, value, onChange, hint, kind }) {
 
 function TopicEditForm({ topic, onSave, onCancel }) {
   const isNew = !topic;
+
+  // ── Hooks al tope (regla React) ──────────────────────────────────────────
   const [title, setTitle] = React.useState(topic ? topic.title : '');
   const [emoji, setEmoji] = React.useState(topic ? topic.emoji : EMOJI_PRESETS[0]);
+  const [emojiCustom, setEmojiCustom] = React.useState('');
   const [gradient, setGradient] = React.useState(topic ? topic.gradient : GRADIENT_PRESETS[0]);
   const [description, setDescription] = React.useState(topic ? topic.description : '');
-  const [slidesText, setSlidesText] = React.useState(
+
+  // Diapositivas — array de objetos { title, text }
+  const [slides, setSlides] = React.useState(() =>
     (topic && Array.isArray(topic.slides) && topic.slides.length)
-      ? topic.slides.map(s => s.title + ' :: ' + s.text).join('\n')
-      : ''
+      ? topic.slides.map(s => ({ title: s.title || '', text: s.text || '' }))
+      : []
   );
+
+  // Meditación
   const [medTitle, setMedTitle] = React.useState(topic?.meditation?.title || '');
   const [medDuration, setMedDuration] = React.useState(topic?.meditation?.duration || '6 min');
   const [medDescription, setMedDescription] = React.useState(topic?.meditation?.description || '');
+
+  // Ejercicio
   const [exerciseTitle, setExerciseTitle] = React.useState(topic?.exercise?.title || '');
-  const [stepsText, setStepsText] = React.useState(
-    (topic && Array.isArray(topic?.exercise?.steps)) ? topic.exercise.steps.join('\n') : ''
+
+  // Pasos del ejercicio — array de strings
+  const [steps, setSteps] = React.useState(() =>
+    (topic && Array.isArray(topic?.exercise?.steps)) ? [...topic.exercise.steps] : []
   );
-  // NUEVO: media + preguntas + niveles
+
+  // Media
   const [videoUrl, setVideoUrl] = React.useState((topic && topic.video_url) || '');
   const [audioUrl, setAudioUrl] = React.useState((topic && topic.audio_url) || '');
-  const [questionsText, setQuestionsText] = React.useState(
-    topic && topic.questions ? topic.questions.map(q => q.text).join('\n') : ''
+
+  // Preguntas — array de objetos { text }
+  const [questions, setQuestions] = React.useState(() =>
+    (topic && Array.isArray(topic.questions) && topic.questions.length)
+      ? topic.questions.map(q => ({ text: q.text || '' }))
+      : []
   );
+
+  // Niveles
   const baseLevels = (topic && topic.levels && topic.levels.length) ? topic.levels : makeDefaultLevels();
   const [levels, setLevels] = React.useState(baseLevels.map(l => ({ ...l })));
-  function setLevelField(i, field, val) {
-    setLevels(ls => ls.map((l, idx) => idx === i ? { ...l, [field]: val } : l));
-  }
 
   // A8: valores iniciales para detectar cambios sin guardar
   const initialRef = React.useRef({
@@ -1960,24 +1975,68 @@ function TopicEditForm({ topic, onSave, onCancel }) {
     emoji: topic ? topic.emoji : EMOJI_PRESETS[0],
     gradient: topic ? topic.gradient : GRADIENT_PRESETS[0],
     description: topic ? topic.description : '',
-    slidesText: (topic && Array.isArray(topic.slides) && topic.slides.length) ? topic.slides.map(s => s.title + ' :: ' + s.text).join('\n') : '',
+    slides: JSON.stringify(
+      (topic && Array.isArray(topic.slides) && topic.slides.length)
+        ? topic.slides.map(s => ({ title: s.title || '', text: s.text || '' }))
+        : []
+    ),
     medTitle: topic?.meditation?.title || '',
     medDuration: topic?.meditation?.duration || '6 min',
     medDescription: topic?.meditation?.description || '',
     exerciseTitle: topic?.exercise?.title || '',
-    stepsText: (topic && Array.isArray(topic?.exercise?.steps)) ? topic.exercise.steps.join('\n') : '',
+    steps: JSON.stringify(
+      (topic && Array.isArray(topic?.exercise?.steps)) ? [...topic.exercise.steps] : []
+    ),
     videoUrl: (topic && topic.video_url) || '',
     audioUrl: (topic && topic.audio_url) || '',
-    questionsText: (topic && topic.questions) ? topic.questions.map(q => q.text).join('\n') : '',
+    questions: JSON.stringify(
+      (topic && Array.isArray(topic.questions) && topic.questions.length)
+        ? topic.questions.map(q => ({ text: q.text || '' }))
+        : []
+    ),
+    levels: JSON.stringify(baseLevels.map(l => ({ ...l }))),
   });
 
+  // ── Helpers reutilizables para listas ────────────────────────────────────
+
+  // Sube un ítem una posición
+  function moverArriba(setter, arr, i) {
+    if (i === 0) return;
+    const copia = [...arr];
+    [copia[i - 1], copia[i]] = [copia[i], copia[i - 1]];
+    setter(copia);
+  }
+
+  // Baja un ítem una posición
+  function moverAbajo(setter, arr, i) {
+    if (i === arr.length - 1) return;
+    const copia = [...arr];
+    [copia[i], copia[i + 1]] = [copia[i + 1], copia[i]];
+    setter(copia);
+  }
+
+  // Quita un ítem por índice
+  function quitar(setter, arr, i) {
+    setter(arr.filter((_, idx) => idx !== i));
+  }
+
+  // ── Niveles ──────────────────────────────────────────────────────────────
+  function setLevelField(i, field, val) {
+    setLevels(ls => ls.map((l, idx) => idx === i ? { ...l, [field]: val } : l));
+  }
+
+  // ── A8: detectar cambios sin guardar ────────────────────────────────────
   function isDirty() {
     const init = initialRef.current;
     return title !== init.title || emoji !== init.emoji || gradient !== init.gradient ||
-      description !== init.description || slidesText !== init.slidesText ||
+      description !== init.description ||
+      JSON.stringify(slides) !== init.slides ||
       medTitle !== init.medTitle || medDuration !== init.medDuration || medDescription !== init.medDescription ||
-      exerciseTitle !== init.exerciseTitle || stepsText !== init.stepsText ||
-      videoUrl !== init.videoUrl || audioUrl !== init.audioUrl || questionsText !== init.questionsText;
+      exerciseTitle !== init.exerciseTitle ||
+      JSON.stringify(steps) !== init.steps ||
+      videoUrl !== init.videoUrl || audioUrl !== init.audioUrl ||
+      JSON.stringify(questions) !== init.questions ||
+      JSON.stringify(levels) !== init.levels;
   }
 
   function handleCancel() {
@@ -1990,41 +2049,43 @@ function TopicEditForm({ topic, onSave, onCancel }) {
 
   const inp = "w-full border border-mist-200 rounded-xl px-4 py-2.5 focus:outline-none focus:border-mist-400 focus:ring-4 focus:ring-mist-100 transition-all";
 
+  // ── handleSave ────────────────────────────────────────────────────────────
   function handleSave() {
-    // Validación: título obligatorio
     if (!title.trim()) {
       alert('El título no puede estar vacío.');
       return;
     }
 
-    const slides = slidesText.split('\n').map(l => l.trim()).filter(Boolean).map(line => {
-      const [t, ...rest] = line.split('::');
-      return { title: (t || '').trim(), text: rest.join('::').trim() || (t || '').trim() };
-    });
-    const steps = stepsText.split('\n').map(l => l.trim()).filter(Boolean);
-    const questions = questionsText.split('\n').map(l => l.trim()).filter(Boolean).map(text => ({ text }));
+    // Slides: descartá los totalmente vacíos (sin título Y sin texto)
+    const finalSlides = slides.filter(s => s.title.trim() || s.text.trim())
+      .map(s => ({ title: s.title, text: s.text }));
+
+    // Steps: descartá strings vacíos
+    const finalSteps = steps.map(s => s.trim()).filter(Boolean);
+
+    // Questions: descartá los de texto vacío
+    const filteredQuestions = questions.map(q => ({ text: q.text.trim() })).filter(q => q.text);
+    // X1: ventana nueva sin preguntas → usar quiz por defecto
+    const finalQuestions = filteredQuestions.length
+      ? filteredQuestions
+      : (topic ? (topic.questions || []) : makeDefaultQuiz(title || 'este tema'));
 
     // Advertencia si todo el contenido queda vacío
-    const finalSlides = slides.length ? slides : (topic && topic.slides ? topic.slides : []);
-    const finalSteps = steps.length ? steps : (topic && topic.exercise ? topic.exercise.steps : []);
-    // X1: en creación sin preguntas escritas, usa el quiz por defecto en vez de vacío
-    const finalQuestions = questions.length
-      ? questions
-      : (topic
-          ? (topic.questions || [])
-          : makeDefaultQuiz(title || 'este tema'));
     const contenidoVacio = finalSlides.length === 0 && finalSteps.length === 0 && finalQuestions.length === 0;
     if (contenidoVacio) {
       const ok = confirm('Esta ventana quedaría sin diapositivas, sin pasos de ejercicio y sin preguntas. ¿Querés guardarla igual?');
       if (!ok) return;
     }
 
-    // Partimos del topic real actual para no pisar campos no editados
+    // Partimos del topic real para no pisar campos no editados
     const base = topic || { id: slugify(title), questions: makeDefaultQuiz(title || 'este tema'), levels: makeDefaultLevels(), sort_order: Date.now() };
+
+    // Emoji: si el admin escribió uno personalizado, tiene prioridad
+    const emojiFinal = emojiCustom.trim() || emoji;
 
     const updated = {
       ...base,
-      title: title.trim(), emoji, gradient, description,
+      title: title.trim(), emoji: emojiFinal, gradient, description,
       slides: finalSlides,
       meditation: { title: medTitle, duration: medDuration, description: medDescription },
       exercise: { title: exerciseTitle, steps: finalSteps },
@@ -2037,6 +2098,7 @@ function TopicEditForm({ topic, onSave, onCancel }) {
     onSave(updated);
   }
 
+  // ── Render ────────────────────────────────────────────────────────────────
   return (
     <div className="bg-white rounded-3xl border border-mist-100 p-6 md:p-8 space-y-6">
       <h3 className="font-serif text-2xl text-sea-900">{isNew ? 'Nueva ventana' : 'Editar ventana: ' + topic.title}</h3>
@@ -2049,9 +2111,22 @@ function TopicEditForm({ topic, onSave, onCancel }) {
         </div>
         <div>
           <label className="text-sm font-semibold text-sea-700 block mb-1">Ícono (emoji)</label>
-          <select value={emoji} onChange={e => setEmoji(e.target.value)} className={inp}>
-            {EMOJI_PRESETS.map(em => <option key={em} value={em}>{em}</option>)}
-          </select>
+          <div className="flex gap-2 items-center">
+            <select value={emoji} onChange={e => { setEmoji(e.target.value); setEmojiCustom(''); }} className={inp}>
+              {EMOJI_PRESETS.map(em => <option key={em} value={em}>{em}</option>)}
+            </select>
+            <input
+              value={emojiCustom}
+              onChange={e => setEmojiCustom(e.target.value)}
+              className="border border-mist-200 rounded-xl px-3 py-2.5 w-24 text-center text-xl focus:outline-none focus:border-mist-400 focus:ring-4 focus:ring-mist-100 transition-all"
+              placeholder="otro"
+              title="Escribí aquí un emoji que no esté en la lista"
+              maxLength={4}
+            />
+          </div>
+          {emojiCustom.trim() && (
+            <p className="text-xs text-sea-400 mt-1">Se usará el emoji personalizado: <strong>{emojiCustom.trim()}</strong></p>
+          )}
         </div>
       </div>
       <div>
@@ -2092,25 +2167,84 @@ function TopicEditForm({ topic, onSave, onCancel }) {
         />
       </div>
 
-      {/* Check-in */}
+      {/* Check-in — Preguntas */}
       <div className="border-t border-mist-100 pt-5 space-y-4">
         <p className="font-serif text-lg text-sea-900">Check-in (diagnóstico)</p>
         <div>
-          <label className="text-sm font-semibold text-sea-700 block mb-1">Preguntas (una por línea)</label>
-          <textarea value={questionsText} onChange={e => setQuestionsText(e.target.value)} rows="4" className={inp} placeholder={"¿Sentís que...?\n¿Te cuesta...?"} />
-          <p className="text-xs text-sea-400 mt-1">Cada pregunta se responde con: Nunca / A veces / Frecuentemente / Casi siempre.</p>
+          <label className="text-sm font-semibold text-sea-700 block mb-2">Preguntas del diagnóstico</label>
+          <p className="text-xs text-sea-400 mb-3">Cada pregunta se responde con: Nunca / A veces / Frecuentemente / Casi siempre. Los rangos de resultado se recalculan solos según la cantidad de preguntas.</p>
+          <div className="space-y-2">
+            {questions.map((q, i) => (
+              <div key={i} className="flex items-center gap-2 rounded-xl border border-mist-100 bg-mist-50/40 px-3 py-2">
+                <span className="text-xs font-bold text-mist-500 w-6 shrink-0">{i + 1}</span>
+                <input
+                  value={q.text}
+                  onChange={e => setQuestions(questions.map((x, idx) => idx === i ? { text: e.target.value } : x))}
+                  className="flex-1 border border-mist-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-mist-400 focus:ring-2 focus:ring-mist-100 transition-all"
+                  placeholder={"Pregunta " + (i + 1)}
+                />
+                <button
+                  onClick={() => moverArriba(setQuestions, questions, i)}
+                  disabled={i === 0}
+                  title="Subir pregunta"
+                  className="btn btn-sm btn-ghost px-2 disabled:opacity-30"
+                >▲</button>
+                <button
+                  onClick={() => moverAbajo(setQuestions, questions, i)}
+                  disabled={i === questions.length - 1}
+                  title="Bajar pregunta"
+                  className="btn btn-sm btn-ghost px-2 disabled:opacity-30"
+                >▼</button>
+                <button
+                  onClick={() => quitar(setQuestions, questions, i)}
+                  title="Quitar esta pregunta"
+                  className="btn btn-sm px-3 py-1 bg-coral-100 text-coral-700 hover:bg-coral-200 rounded-lg text-xs font-semibold"
+                >Quitar</button>
+              </div>
+            ))}
+          </div>
+          <button
+            onClick={() => setQuestions([...questions, { text: '' }])}
+            className="mt-3 btn btn-ghost text-sm border border-mist-200 hover:bg-mist-50"
+          >+ Agregar pregunta</button>
         </div>
+
+        {/* Niveles de resultado */}
         <div>
           <label className="text-sm font-semibold text-sea-700 block mb-2">Resultados según el puntaje</label>
           <div className="space-y-3">
             {(() => {
-              const qCount = questionsText.split('\n').filter(l => l.trim()).length;
+              const qCount = questions.length;
               const dynLevels = (qCount > 0 && levels.length > 0) ? computeDynamicLevels(levels, qCount) : levels;
               return levels.map((lv, i) => {
                 const dl = dynLevels[i] || lv;
                 return (
                   <div key={i} className="rounded-xl border border-mist-100 p-3 bg-mist-50/50">
-                    <p className="text-xs font-bold text-mist-600 mb-2">Puntaje {dl.min}–{dl.max}{qCount > 0 ? ' (calculado según ' + qCount + ' pregunta' + (qCount !== 1 ? 's' : '') + ')' : ''}</p>
+                    <div className="flex items-center justify-between mb-2">
+                      <p className="text-xs font-bold text-mist-600">
+                        Nivel {i + 1} — Puntaje {dl.min}–{dl.max}
+                        {qCount > 0 ? ' (según ' + qCount + ' pregunta' + (qCount !== 1 ? 's' : '') + ')' : ''}
+                      </p>
+                      <div className="flex gap-1">
+                        <button
+                          onClick={() => moverArriba(setLevels, levels, i)}
+                          disabled={i === 0}
+                          title="Subir nivel"
+                          className="btn btn-sm btn-ghost px-2 disabled:opacity-30 text-xs"
+                        >▲</button>
+                        <button
+                          onClick={() => moverAbajo(setLevels, levels, i)}
+                          disabled={i === levels.length - 1}
+                          title="Bajar nivel"
+                          className="btn btn-sm btn-ghost px-2 disabled:opacity-30 text-xs"
+                        >▼</button>
+                        <button
+                          onClick={() => levels.length > 2 ? quitar(setLevels, levels, i) : alert('Debe haber al menos 2 niveles de resultado.')}
+                          title="Quitar este nivel"
+                          className="btn btn-sm px-3 py-1 bg-coral-100 text-coral-700 hover:bg-coral-200 rounded-lg text-xs font-semibold"
+                        >Quitar</button>
+                      </div>
+                    </div>
                     <input value={lv.label} onChange={e => setLevelField(i, 'label', e.target.value)} className={inp + " mb-2"} placeholder="Título del resultado (ej: Marea calma)" />
                     <textarea value={lv.message} onChange={e => setLevelField(i, 'message', e.target.value)} rows="2" className={inp} placeholder="Mensaje para la persona" />
                   </div>
@@ -2118,23 +2252,65 @@ function TopicEditForm({ topic, onSave, onCancel }) {
               });
             })()}
           </div>
+          <button
+            onClick={() => setLevels([...levels, { label: '', message: '' }])}
+            className="mt-3 btn btn-ghost text-sm border border-mist-200 hover:bg-mist-50"
+          >+ Agregar nivel</button>
         </div>
       </div>
 
-      {/* Contenido */}
+      {/* Contenido — Diapositivas */}
       <div className="border-t border-mist-100 pt-5 space-y-4">
         <p className="font-serif text-lg text-sea-900">Contenido</p>
         <div>
-          <label className="text-sm font-semibold text-sea-700 block mb-1">Diapositivas (una por línea)</label>
-          <textarea value={slidesText} onChange={e => setSlidesText(e.target.value)} rows="5" className={inp + " font-mono text-xs"} placeholder={"¿Qué es la ansiedad? :: La ansiedad es una respuesta natural del cuerpo...\nCómo identificarla :: Fijate si sentís tensión en el pecho o pensamientos acelerados."} />
-          {/* B3: texto de ayuda claro para la persona mayor */}
-          <div className="mt-2 bg-sand-50 border border-mist-100 rounded-xl p-3 text-xs text-sea-600 space-y-1">
-            <p><strong>Cómo escribir las diapositivas:</strong></p>
-            <p>Cada línea es una diapositiva. Escribí el <strong>título</strong>, luego <strong>" :: "</strong> (dos puntos y dos puntos), y después el <strong>texto</strong>.</p>
-            <p>Ejemplo: <code className="bg-white rounded px-1">¿Qué es la ansiedad? :: La ansiedad es una respuesta natural del cuerpo ante situaciones de estrés.</code></p>
-            <p>Si una línea no tiene " :: ", la línea entera se usa como título y el texto queda vacío.</p>
+          <label className="text-sm font-semibold text-sea-700 block mb-2">Diapositivas</label>
+          <div className="space-y-3">
+            {slides.map((s, i) => (
+              <div key={i} className="rounded-xl border border-mist-100 bg-mist-50/40 p-3 space-y-2">
+                <div className="flex items-center justify-between mb-1">
+                  <span className="text-xs font-bold text-mist-500">Diapositiva {i + 1}</span>
+                  <div className="flex gap-1">
+                    <button
+                      onClick={() => moverArriba(setSlides, slides, i)}
+                      disabled={i === 0}
+                      title="Subir diapositiva"
+                      className="btn btn-sm btn-ghost px-2 disabled:opacity-30 text-xs"
+                    >▲</button>
+                    <button
+                      onClick={() => moverAbajo(setSlides, slides, i)}
+                      disabled={i === slides.length - 1}
+                      title="Bajar diapositiva"
+                      className="btn btn-sm btn-ghost px-2 disabled:opacity-30 text-xs"
+                    >▼</button>
+                    <button
+                      onClick={() => quitar(setSlides, slides, i)}
+                      title="Quitar esta diapositiva"
+                      className="btn btn-sm px-3 py-1 bg-coral-100 text-coral-700 hover:bg-coral-200 rounded-lg text-xs font-semibold"
+                    >Quitar</button>
+                  </div>
+                </div>
+                <input
+                  value={s.title}
+                  onChange={e => setSlides(slides.map((x, idx) => idx === i ? { ...x, title: e.target.value } : x))}
+                  className={inp}
+                  placeholder="Título de la diapositiva"
+                />
+                <textarea
+                  value={s.text}
+                  onChange={e => setSlides(slides.map((x, idx) => idx === i ? { ...x, text: e.target.value } : x))}
+                  rows="3"
+                  className={inp}
+                  placeholder="Texto de la diapositiva"
+                />
+              </div>
+            ))}
           </div>
+          <button
+            onClick={() => setSlides([...slides, { title: '', text: '' }])}
+            className="mt-3 btn btn-ghost text-sm border border-mist-200 hover:bg-mist-50"
+          >+ Agregar diapositiva</button>
         </div>
+
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div>
             <label className="text-sm font-semibold text-sea-700 block mb-1">Título meditación</label>
@@ -2153,9 +2329,44 @@ function TopicEditForm({ topic, onSave, onCancel }) {
           <label className="text-sm font-semibold text-sea-700 block mb-1">Título del ejercicio</label>
           <input value={exerciseTitle} onChange={e => setExerciseTitle(e.target.value)} className={inp} />
         </div>
+
+        {/* Pasos del ejercicio */}
         <div>
-          <label className="text-sm font-semibold text-sea-700 block mb-1">Pasos del ejercicio (uno por línea)</label>
-          <textarea value={stepsText} onChange={e => setStepsText(e.target.value)} rows="4" className={inp} />
+          <label className="text-sm font-semibold text-sea-700 block mb-2">Pasos del ejercicio</label>
+          <div className="space-y-2">
+            {steps.map((s, i) => (
+              <div key={i} className="flex items-center gap-2 rounded-xl border border-mist-100 bg-mist-50/40 px-3 py-2">
+                <span className="text-xs font-bold text-mist-500 w-6 shrink-0">{i + 1}</span>
+                <input
+                  value={s}
+                  onChange={e => setSteps(steps.map((x, idx) => idx === i ? e.target.value : x))}
+                  className="flex-1 border border-mist-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-mist-400 focus:ring-2 focus:ring-mist-100 transition-all"
+                  placeholder={"Paso " + (i + 1)}
+                />
+                <button
+                  onClick={() => moverArriba(setSteps, steps, i)}
+                  disabled={i === 0}
+                  title="Subir paso"
+                  className="btn btn-sm btn-ghost px-2 disabled:opacity-30"
+                >▲</button>
+                <button
+                  onClick={() => moverAbajo(setSteps, steps, i)}
+                  disabled={i === steps.length - 1}
+                  title="Bajar paso"
+                  className="btn btn-sm btn-ghost px-2 disabled:opacity-30"
+                >▼</button>
+                <button
+                  onClick={() => quitar(setSteps, steps, i)}
+                  title="Quitar este paso"
+                  className="btn btn-sm px-3 py-1 bg-coral-100 text-coral-700 hover:bg-coral-200 rounded-lg text-xs font-semibold"
+                >Quitar</button>
+              </div>
+            ))}
+          </div>
+          <button
+            onClick={() => setSteps([...steps, ''])}
+            className="mt-3 btn btn-ghost text-sm border border-mist-200 hover:bg-mist-50"
+          >+ Agregar paso</button>
         </div>
       </div>
 
