@@ -981,8 +981,13 @@ function DiagnosticQuiz({ topic, onComplete }) {
     return (
       <div className="animate-fadein max-w-xl mx-auto text-center py-6">
         <p className="uppercase tracking-widest text-xs text-sea-500 font-semibold mb-2">Tu check-in de hoy</p>
-        <h3 className="font-serif text-3xl md:text-4xl font-semibold text-sea-900 mb-4">{result.level ? result.level.label : ''}</h3>
-        <p className="text-sea-700 leading-relaxed mb-6">{result.level ? result.level.message : ''}</p>
+        {/* N4: si no hay nivel configurado, mostrar mensaje claro en lugar de texto vacío */}
+        <h3 className="font-serif text-3xl md:text-4xl font-semibold text-sea-900 mb-4">
+          {result.level ? result.level.label : 'Gracias por tu check-in'}
+        </h3>
+        <p className="text-sea-700 leading-relaxed mb-6">
+          {result.level ? result.level.message : 'Todavía no hay resultados configurados para esta ventana.'}
+        </p>
         <p className="text-xs text-sea-400 mb-6 italic">Esto es una orientación para elegir contenido, no un diagnóstico clínico. Si algo de esto te desborda, una consulta con un profesional siempre suma.</p>
         <button onClick={restart} className="btn btn-soft btn-sm">Volver a hacer el check-in</button>
       </div>
@@ -2005,15 +2010,18 @@ function TopicEditForm({ topic, onSave, onCancel }) {
 
   // ── Hooks al tope (regla React) ──────────────────────────────────────────
   const [title, setTitle] = React.useState(topic ? topic.title : '');
-  const [emoji, setEmoji] = React.useState(topic ? topic.emoji : EMOJI_PRESETS[0]);
-  const [emojiCustom, setEmojiCustom] = React.useState('');
+  // N6: si el emoji guardado no está en la lista de presets, lo mostramos en el campo personalizado
+  const topicEmoji = topic ? topic.emoji : EMOJI_PRESETS[0];
+  const [emoji, setEmoji] = React.useState(EMOJI_PRESETS.includes(topicEmoji) ? topicEmoji : EMOJI_PRESETS[0]);
+  const [emojiCustom, setEmojiCustom] = React.useState(EMOJI_PRESETS.includes(topicEmoji) ? '' : topicEmoji);
   const [gradient, setGradient] = React.useState(topic ? topic.gradient : GRADIENT_PRESETS[0]);
   const [description, setDescription] = React.useState(topic ? topic.description : '');
 
-  // Diapositivas — array de objetos { title, text }
+  // Diapositivas — array de objetos { title, text, ...camposExtra }
+  // N5: guardamos el objeto completo para no perder campos adicionales al guardar
   const [slides, setSlides] = React.useState(() =>
     (topic && Array.isArray(topic.slides) && topic.slides.length)
-      ? topic.slides.map(s => ({ title: s.title || '', text: s.text || '' }))
+      ? topic.slides.map(s => ({ ...s, title: s.title || '', text: s.text || '' }))
       : []
   );
 
@@ -2133,18 +2141,19 @@ function TopicEditForm({ topic, onSave, onCancel }) {
     }
 
     // Slides: descartá los totalmente vacíos (sin título Y sin texto)
+    // N5: spread del objeto original para preservar campos adicionales
     const finalSlides = slides.filter(s => s.title.trim() || s.text.trim())
-      .map(s => ({ title: s.title, text: s.text }));
+      .map(s => ({ ...s, title: s.title, text: s.text }));
 
     // Steps: descartá strings vacíos
     const finalSteps = steps.map(s => s.trim()).filter(Boolean);
 
     // Questions: descartá los de texto vacío
     const filteredQuestions = questions.map(q => ({ text: q.text.trim() })).filter(q => q.text);
-    // X1: ventana nueva sin preguntas → usar quiz por defecto
+    // N3/X1: ventana nueva sin preguntas → quiz por defecto; ventana existente → respetar vacío intencional
     const finalQuestions = filteredQuestions.length
       ? filteredQuestions
-      : (topic ? (topic.questions || []) : makeDefaultQuiz(title || 'este tema'));
+      : (topic ? [] : makeDefaultQuiz(title || 'este tema'));
 
     // Advertencia si todo el contenido queda vacío
     const contenidoVacio = finalSlides.length === 0 && finalSteps.length === 0 && finalQuestions.length === 0;
@@ -3033,15 +3042,9 @@ function App() {
     setReordering(true);
 
     try {
-      let failed = false;
-      for (let idx = 0; idx < withOrder.length; idx++) {
-        const prev = prevTopics.find(x => x.id === withOrder[idx].id);
-        if (!prev || prev.sort_order !== idx) {
-          const { error } = await sb.from('topics').update({ sort_order: idx }).eq('id', withOrder[idx].id);
-          if (error) { failed = true; break; }
-        }
-      }
-      if (failed) {
+      // N2: upsert batch atómico — o guarda todo o no guarda nada (evita orden parcial en caso de falla)
+      const { error } = await sb.from('topics').upsert(withOrder);
+      if (error) {
         setTopics(prevTopics);
         alert('No se pudo guardar el nuevo orden, intentá de nuevo.');
       }
@@ -3071,10 +3074,31 @@ function App() {
   }
 
   async function seedInitialTopics() {
-    const { error } = await sb.from('topics').upsert(INITIAL_TOPICS);
+    // N1: detectar qué ventanas de ejemplo faltan (sin pisar las ya editadas)
+    const existingIds = new Set(topics.map(t => t.id));
+    const faltantes = INITIAL_TOPICS.filter(t => !existingIds.has(t.id));
+
+    if (faltantes.length === 0) {
+      alert('Las ventanas iniciales ya están cargadas.');
+      return;
+    }
+
+    const ok = confirm(
+      'Se agregarán ' + faltantes.length + ' ventana(s) de ejemplo que aún no existen:\n' +
+      faltantes.map(t => '• ' + (t.title || t.id)).join('\n') +
+      '\n\nLas ventanas que ya editaste no se modificarán. ¿Continuar?'
+    );
+    if (!ok) return;
+
+    // Asignar sort_order continuando desde el máximo actual
+    const maxOrden = topics.reduce((m, t) => Math.max(m, Number.isFinite(t.sort_order) ? t.sort_order : 0), -1);
+    const toInsert = faltantes.map((t, idx) => ({ ...t, sort_order: maxOrden + 1 + idx }));
+
+    const { error } = await sb.from('topics').upsert(toInsert);
     if (error) { alert('No se pudo cargar el contenido inicial: ' + traducirError(error.message)); return; } // M8
-    const { data } = await sb.from('topics').select('*').order('created_at', { ascending: true });
-    if (data) setTopics(data);
+
+    // Refrescar estado local con los topics recién insertados
+    setTopics(prev => [...prev, ...toInsert]);
   }
 
   if (!authChecked) {
