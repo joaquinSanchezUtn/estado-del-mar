@@ -11,7 +11,7 @@
 <meta name="theme-color" content="#2f7f8f" />
 
 <!-- SEO: canonical -->
-<link rel="canonical" href="https://visionary-malasada-57f8bc.netlify.app" />
+<link rel="canonical" href="https://visionary-malasada-57f8bc.netlify.app/" />
 
 <!-- SEO: favicon SVG inline (sin archivo externo) -->
 <link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%2048%2048'%3E%3Cdefs%3E%3ClinearGradient%20id='s'%20x1='0'%20y1='0'%20x2='1'%20y2='1'%3E%3Cstop%20offset='0'%20stop-color='%238ecabf'/%3E%3Cstop%20offset='1'%20stop-color='%23356a63'/%3E%3C/linearGradient%3E%3C/defs%3E%3Ccircle%20cx='24'%20cy='24'%20r='23'%20fill='%23e4f3f0'/%3E%3CclipPath%20id='c'%3E%3Ccircle%20cx='24'%20cy='24'%20r='23'/%3E%3C/clipPath%3E%3Cg%20clip-path='url(%23c)'%3E%3Ccircle%20cx='31'%20cy='16'%20r='6'%20fill='%23f77e5c'/%3E%3Cpath%20d='M-4%2030C7%2023%2015%2023%2024%2028C33%2033%2041%2026%2052%2030L52%2052-4%2052Z'%20fill='url(%23s)'/%3E%3C/g%3E%3C/svg%3E" />
@@ -21,8 +21,11 @@
 <meta property="og:site_name" content="Estado del Mar" />
 <meta property="og:title" content="Estado del Mar — Psicoeducación, meditaciones y bienestar emocional" />
 <meta property="og:description" content="Psicoeducación, meditaciones guiadas y ejercicios para trabajar la ansiedad, la autoestima, el duelo y otras áreas de tu bienestar emocional." />
-<meta property="og:url" content="https://visionary-malasada-57f8bc.netlify.app" />
+<meta property="og:url" content="https://visionary-malasada-57f8bc.netlify.app/" />
 <meta property="og:locale" content="es_AR" />
+<!-- og:image: para que WhatsApp/Facebook muestren vista previa al compartir, subí una imagen
+     PNG o JPG de ~1200x630 px (idealmente junto con tu dominio propio) y referenciarla acá:
+     <meta property="og:image" content="https://tu-dominio.com/preview.jpg" /> -->
 
 <!-- SEO: Twitter Card -->
 <meta name="twitter:card" content="summary" />
@@ -796,6 +799,24 @@ function useFocusTrap(ref) {
   }, []);
 }
 
+// G7: bloqueo de scroll compartido por contador — evita que al cerrar overlays en cierto
+// orden quede el body bloqueado sin ningún overlay visible.
+var _scrollLockCount = 0;
+var _scrollLockPrev = '';
+function lockScroll() {
+  if (_scrollLockCount === 0) {
+    _scrollLockPrev = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+  }
+  _scrollLockCount++;
+}
+function unlockScroll() {
+  _scrollLockCount = Math.max(0, _scrollLockCount - 1);
+  if (_scrollLockCount === 0) {
+    document.body.style.overflow = _scrollLockPrev;
+  }
+}
+
 function Modal({ onClose, children, maxW }) {
   // M7: ref al onClose para no re-suscribir el listener en cada render
   const onCloseRef = React.useRef(onClose);
@@ -804,11 +825,10 @@ function Modal({ onClose, children, maxW }) {
   const containerRef = React.useRef(null);
   useFocusTrap(containerRef); // M7: focus trap
 
-  // M6: captura el overflow original UNA sola vez al montar; lo restaura al desmontar
+  // G7: usar el contador compartido de scroll lock en lugar de capturar/restaurar directamente
   React.useEffect(() => {
-    const prev = document.body.style.overflow;
-    document.body.style.overflow = 'hidden';
-    return () => { document.body.style.overflow = prev; };
+    lockScroll();
+    return () => { unlockScroll(); };
   }, []);
 
   // M6/M7: listener de Escape separado, usa ref para no re-suscribir
@@ -819,7 +839,7 @@ function Modal({ onClose, children, maxW }) {
   }, []);
   return (
     <div className="fixed inset-0 z-50 bg-sea-900/40 backdrop-blur-sm flex items-center justify-center p-4 animate-fadein" onClick={onClose}>
-      <div ref={containerRef} onClick={e => e.stopPropagation()} className={"bg-white rounded-3xl shadow-2xl w-full max-h-[90vh] overflow-y-auto animate-fadein " + (maxW || "max-w-md")}>
+      <div ref={containerRef} onClick={e => e.stopPropagation()} className={"bg-white rounded-3xl shadow-2xl w-full max-h-[90dvh] overflow-y-auto animate-fadein " + (maxW || "max-w-md")}>
         {children}
       </div>
     </div>
@@ -959,6 +979,13 @@ function DiagnosticQuiz({ topic, onComplete }) {
   const [answers, setAnswers] = React.useState([]);
   const [current, setCurrent] = React.useState(0);
   const [result, setResult] = React.useState(null);
+  // G5: ref al heading de la pregunta para mover foco cuando cambia current
+  const headingRef = React.useRef(null);
+  React.useEffect(() => {
+    if (!result && headingRef.current) {
+      try { headingRef.current.focus(); } catch(e) {}
+    }
+  }, [current, result]);
 
   // Guard: si no hay preguntas o niveles, mostrá estado vacío
   const questions = (topic && topic.questions) || [];
@@ -1014,20 +1041,24 @@ function DiagnosticQuiz({ topic, onComplete }) {
         <p className="text-sea-700 leading-relaxed mb-6">
           {result.level ? result.level.message : 'Todavía no hay resultados configurados para esta ventana.'}
         </p>
-        <p className="text-xs text-sea-400 mb-6 italic">Esto es una orientación para elegir contenido, no un diagnóstico clínico. Si algo de esto te desborda, una consulta con un profesional siempre suma.</p>
+        <p className="text-xs text-sea-500 mb-6 italic">Esto es una orientación para elegir contenido, no un diagnóstico clínico. Si algo de esto te desborda, una consulta con un profesional siempre suma.</p>
         <button onClick={restart} className="btn btn-soft btn-sm">Volver a hacer el check-in</button>
       </div>
     );
   }
 
   const q = questions[current];
+  // G5: id único para aria-labelledby del grupo de opciones
+  const quizHeadingId = 'quiz-pregunta-' + (topic && topic.id ? topic.id : 'x');
 
   return (
     <div className="max-w-xl mx-auto py-4">
       <div className="mb-6"><ProgressDots count={questions.length} current={current} /></div>
-      <p className="text-center text-xs text-sea-400 mb-2">Pregunta {current + 1} de {questions.length}</p>
-      <h3 className="text-center font-serif text-2xl md:text-3xl text-sea-900 mb-8 px-2 break-words">{q.text}</h3>
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+      <p className="text-center text-xs text-sea-500 mb-2">Pregunta {current + 1} de {questions.length}</p>
+      {/* G5: tabIndex={-1} hace al heading enfocable por JS sin crear tab stop extra */}
+      <h3 id={quizHeadingId} ref={headingRef} tabIndex={-1} className="text-center font-serif text-2xl md:text-3xl text-sea-900 mb-8 px-2 break-words focus:outline-none">{q.text}</h3>
+      {/* G5: role=group + aria-labelledby para que lectores de pantalla anuncien la pregunta al navegar opciones */}
+      <div role="group" aria-labelledby={quizHeadingId} className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         {LIKERT.map(opt => (
           <button key={opt.label} onClick={() => choose(opt.value)}
             className="rounded-2xl border-2 border-mist-100 bg-white hover:border-mist-400 hover:bg-mist-50 hover:-translate-y-0.5 hover:shadow-md hover:shadow-mist-100 active:translate-y-0 active:scale-[.98] transition-all duration-200 px-5 py-4 text-sea-700 font-medium focus:outline-none focus-visible:ring-4 focus-visible:ring-mist-200">
@@ -1103,7 +1134,7 @@ function SlideViewer({ slides }) {
           Siguiente →
         </button>
       </div>
-      <p className="text-center text-xs text-sea-400 mt-4">Avanzá a tu propio ritmo — cada diapositiva es un disparador para tu propio insight.</p>
+      <p className="text-center text-xs text-sea-500 mt-4">Avanzá a tu propio ritmo — cada diapositiva es un disparador para tu propio insight.</p>
     </div>
   );
 }
@@ -1195,7 +1226,8 @@ function MeditationPlayer({ meditation, audioUrl }) {
         <p className="text-xs uppercase tracking-widest text-white/80 mb-2">Meditación guiada</p>
         <h4 className="font-serif text-2xl md:text-3xl mb-2 break-words">{meditation.title}</h4>
         <p className="text-white/90 text-sm mb-8 break-words">{meditation.description}</p>
-        <button onClick={toggle}
+        {/* G5: aria-label dinámico para lectores de pantalla */}
+        <button onClick={toggle} aria-label={playing ? 'Pausar' : 'Reproducir'}
           className={"w-16 h-16 rounded-full bg-white text-mist-600 text-2xl flex items-center justify-center mx-auto mb-6 hover:scale-110 active:scale-95 transition-transform duration-300 shadow-xl " + (playing ? "animate-breathe" : "")}>
           {playing ? '❚❚' : '▶'}
         </button>
@@ -1204,7 +1236,7 @@ function MeditationPlayer({ meditation, audioUrl }) {
         </div>
         <p className="text-xs text-white/80">{elapsedMin}:{String(elapsedSec).padStart(2,'0')} / {totalMinutes}:00</p>
       </div>
-      <p className="text-center text-xs text-sea-400 mt-4">Audio de ejemplo — cargá el audio real desde el panel de administración.</p>
+      <p className="text-center text-xs text-sea-500 mt-4">Audio de ejemplo — cargá el audio real desde el panel de administración.</p>
     </div>
   );
 }
@@ -1222,7 +1254,7 @@ function VideoPlayer({ src }) {
           <video src={src} controls playsInline className="w-full max-h-[70vh] bg-black" onError={() => setVideoError(true)}></video>
         )}
       </div>
-      <p className="text-center text-xs text-sea-400 mt-4">Video de la ventana.</p>
+      <p className="text-center text-xs text-sea-500 mt-4">Video de la ventana.</p>
     </div>
   );
 }
@@ -1543,7 +1575,7 @@ function PricingSection({ price, subscribed, onOpenSubscribe, onOpenPage, onGoWi
         <Reveal>
           <div className="bg-white border border-mist-100 rounded-3xl p-10 shadow-xl shadow-mist-200/40">
             <p className="font-serif text-6xl font-semibold mb-1 text-sea-900">${price}<span className="text-lg font-sans text-sea-500">/mes</span></p>
-            <p className="text-xs text-sea-400 mb-8">(precio de ejemplo — se edita desde el panel de administración)</p>
+            <p className="text-xs text-sea-500 mb-8">(precio de ejemplo — se edita desde el panel de administración)</p>
             <ul className="text-left space-y-3 text-sea-700 mb-8 max-w-xs mx-auto">
               <li>🌊 Contenido psicoeducativo en formato de diapositivas, a tu ritmo</li>
               <li>🌊 Meditaciones guiadas</li>
@@ -1562,7 +1594,7 @@ function PricingSection({ price, subscribed, onOpenSubscribe, onOpenPage, onGoWi
                 Suscribirme
               </button>
             )}
-            <p className="text-xs text-sea-400 mt-4">Podés cancelar cuando quieras.</p>
+            <p className="text-xs text-sea-500 mt-4">Podés cancelar cuando quieras.</p>
           </div>
         </Reveal>
         <button onClick={() => onOpenPage('faq')} className="btn-link text-sea-500 text-sm hover:text-sea-800 mt-8 inline-block">¿Tenés dudas? Mirá las preguntas frecuentes</button>
@@ -1589,7 +1621,7 @@ function Footer({ onOpenAdmin, showAdminLink, onOpenPage }) {
           contactá a un profesional o a una línea de ayuda de tu país.
         </p>
         {showAdminLink && <button onClick={onOpenAdmin} className="btn-link text-xs text-sea-500 hover:text-sea-700">Panel de administración</button>}
-        <p className="text-xs text-sea-400 mt-8">Prototipo navegable — pagos reales todavía no conectados.</p>
+        <p className="text-xs text-sea-500 mt-8">Prototipo navegable — pagos reales todavía no conectados.</p>
       </div>
     </footer>
   );
@@ -1614,13 +1646,21 @@ function AuthModal({ intent, initialMode, onClose, onAuthed }) {
     // (el flujo OAuth es inmediato, sin días de espera) pero usamos un prefijo distinto
     // para que no se confunda con el flujo de confirmación de email.
     if (intent === 'subscribe') {
-      try { localStorage.setItem('edm_pending_subscribe', 'oauth-pending'); } catch(e) {}
+      try { localStorage.setItem('edm_pending_subscribe', 'oauth-pending:' + Date.now()); } catch(e) {}
     }
-    const { error: err } = await sb.auth.signInWithOAuth({
-      provider: 'google',
-      options: { redirectTo: window.location.origin },
-    });
-    if (err) setError(traducirError(err.message)); // M8
+    // G3: envolver en try/catch para no dejar el flujo colgado si hay error de red
+    setLoading(true);
+    try {
+      const { error: err } = await sb.auth.signInWithOAuth({
+        provider: 'google',
+        options: { redirectTo: window.location.origin },
+      });
+      if (err) setError(traducirError(err.message)); // M8
+    } catch(e) {
+      setError(traducirError(e && e.message ? e.message : String(e)));
+    } finally {
+      setLoading(false);
+    }
   }
 
   async function handleSubmit() {
@@ -1632,28 +1672,33 @@ function AuthModal({ intent, initialMode, onClose, onAuthed }) {
     // M10: validación de contraseña mínima en signup
     if (mode === 'signup' && password.length < 6) { setError('La contraseña debe tener al menos 6 caracteres.'); return; }
     setLoading(true);
-    if (mode === 'signup') {
-      const { data, error: err } = await sb.auth.signUp({
-        email, password, options: { data: { name } },
-      });
-      setLoading(false);
-      if (err) { setError(traducirError(err.message)); return; } // M8
-      if (!data.session) {
-        // Supabase requiere confirmación de email: guardamos la intención si era suscribirse.
-        // S3: guardamos el email del usuario para que, al confirmar, la suscripción
-        // solo se aplique a quien se registró con ese email (no a otro usuario en la misma compu).
-        if (intent === 'subscribe') {
-          try { localStorage.setItem('edm_pending_subscribe', email); } catch(e) {}
+    // G3: envolver en try/catch/finally para que un fallo de red libere siempre el spinner
+    try {
+      if (mode === 'signup') {
+        const { data, error: err } = await sb.auth.signUp({
+          email, password, options: { data: { name } },
+        });
+        if (err) { setError(traducirError(err.message)); return; } // M8
+        if (!data.session) {
+          // Supabase requiere confirmación de email: guardamos la intención si era suscribirse.
+          // S3: guardamos el email del usuario para que, al confirmar, la suscripción
+          // solo se aplique a quien se registró con ese email (no a otro usuario en la misma compu).
+          if (intent === 'subscribe') {
+            try { localStorage.setItem('edm_pending_subscribe', email); } catch(e) {}
+          }
+          setNeedsConfirm(true);
+          return;
         }
-        setNeedsConfirm(true);
-        return;
+        onAuthed(intent === 'subscribe');
+      } else {
+        const { error: err } = await sb.auth.signInWithPassword({ email, password });
+        if (err) { setError(traducirError(err.message)); return; } // M8
+        onAuthed(false);
       }
-      onAuthed(intent === 'subscribe');
-    } else {
-      const { error: err } = await sb.auth.signInWithPassword({ email, password });
+    } catch(e) {
+      setError(traducirError(e && e.message ? e.message : String(e)));
+    } finally {
       setLoading(false);
-      if (err) { setError(traducirError(err.message)); return; } // M8
-      onAuthed(false);
     }
   }
 
@@ -1698,7 +1743,7 @@ function AuthModal({ intent, initialMode, onClose, onAuthed }) {
             </button>
             <div className="flex items-center gap-3 my-4">
               <div className="h-px bg-mist-100 flex-1"></div>
-              <span className="text-xs text-sea-400 font-semibold">o con tu email</span>
+              <span className="text-xs text-sea-500 font-semibold">o con tu email</span>
               <div className="h-px bg-mist-100 flex-1"></div>
             </div>
           </div>
@@ -1720,7 +1765,7 @@ function AuthModal({ intent, initialMode, onClose, onAuthed }) {
             <label className="text-sm font-semibold text-sea-700 block mb-1">Contraseña</label>
             <input value={password} onChange={e => setPassword(e.target.value)} type="password" className="w-full border border-mist-200 rounded-xl px-4 py-2.5 focus:outline-none focus:border-mist-400 focus:ring-4 focus:ring-mist-100 transition-all" placeholder="••••••••" />
           </div>
-          {error && <p className="text-sm text-red-600 mt-1">{error}</p>}
+          {error && <p role="alert" className="text-sm text-red-600 mt-1">{error}</p>}
           <button type="submit" disabled={loading} className="btn btn-primary btn-block mt-2 disabled:opacity-50">
             {loading ? 'Un momento…' : (mode === 'signup' ? (intent === 'subscribe' ? 'Crear cuenta y suscribirme' : 'Crear cuenta') : 'Iniciar sesión')}
           </button>
@@ -1752,11 +1797,10 @@ function ProfileDrawer({ email, profile, subscribed, subscribeDate, isAdmin, sub
   const onCloseRef = React.useRef(onClose);
   React.useEffect(() => { onCloseRef.current = onClose; }, [onClose]);
 
-  // M6: captura el overflow original UNA sola vez al montar; lo restaura al desmontar
+  // G7: usar el contador compartido de scroll lock en lugar de capturar/restaurar directamente
   React.useEffect(() => {
-    const prevOverflow = document.body.style.overflow;
-    document.body.style.overflow = 'hidden';
-    return () => { document.body.style.overflow = prevOverflow; };
+    lockScroll();
+    return () => { unlockScroll(); };
   }, []);
 
   // M6/M7: listener de Escape separado, usa ref para no re-suscribir
@@ -1789,7 +1833,7 @@ function ProfileDrawer({ email, profile, subscribed, subscribeDate, isAdmin, sub
     <div className="fixed inset-0 z-50 flex justify-end items-start">
       <div className="absolute inset-0 bg-sea-900/40 backdrop-blur-sm animate-fadein" onClick={onClose}></div>
 
-      <div ref={drawerRef} className="drawer-panel relative w-full max-w-md m-3 rounded-3xl bg-sand-50 shadow-2xl overflow-y-auto max-h-[calc(100vh-1.5rem)]">
+      <div ref={drawerRef} className="drawer-panel relative w-full max-w-md m-3 rounded-3xl bg-sand-50 shadow-2xl overflow-y-auto max-h-[calc(100dvh-1.5rem)]">
         {/* Encabezado (queda fijo arriba mientras scrolleás) */}
         <div className="sticky top-0 z-10 bg-gradient-to-br from-mist-500 to-sea-600 text-white px-6 pt-5 pb-5 overflow-hidden">
           <div className="absolute -top-10 -right-8 w-40 h-40 rounded-full bg-white/10 blur-2xl animate-aurora pointer-events-none"></div>
@@ -1885,7 +1929,7 @@ function ProfileDrawer({ email, profile, subscribed, subscribeDate, isAdmin, sub
                 <button type="submit" disabled={saving} className="btn btn-primary btn-sm disabled:opacity-50">
                   {saving ? 'Guardando…' : 'Guardar cambios'}
                 </button>
-                {savedMsg && <span className="text-sm text-mist-600 font-semibold animate-fadein">{savedMsg}</span>}
+                {savedMsg && <span role={savedMsg.includes('✓') ? 'status' : 'alert'} aria-live="polite" className="text-sm text-mist-600 font-semibold animate-fadein">{savedMsg}</span>}
               </div>
             </form>
           </div>
@@ -2047,7 +2091,7 @@ function MediaUploader({ label, accept, prefix, value, onChange, hint, kind }) {
         className="block w-full text-sm text-sea-600 file:mr-3 file:py-2 file:px-4 file:rounded-full file:border-0 file:bg-mist-100 file:text-mist-700 file:font-semibold hover:file:bg-mist-200 file:cursor-pointer cursor-pointer" />
       {uploading && <p className="text-sm text-mist-600 mt-1 animate-fadein">Subiendo archivo… no cierres esta ventana.</p>}
       {err && <p className="text-sm text-red-600 mt-1">{err}</p>}
-      {hint && <p className="text-xs text-sea-400 mt-1">{hint}</p>}
+      {hint && <p className="text-xs text-sea-500 mt-1">{hint}</p>}
     </div>
   );
 }
@@ -2057,18 +2101,19 @@ function MediaUploader({ label, accept, prefix, value, onChange, hint, kind }) {
 
 const FilaPaso = React.memo(function FilaPaso({ valor, indice, total, onChange, onSubir, onBajar, onQuitar }) {
   return (
-    <div className="flex items-center gap-3 rounded-xl border border-mist-100 bg-mist-50/40 px-4 py-3">
-      <span className="text-xs font-bold text-mist-500 w-5 shrink-0 text-right">{indice + 1}.</span>
+    <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 rounded-xl border border-mist-100 bg-mist-50/40 px-4 py-3">
+      <span className="text-xs font-bold text-mist-500 w-5 shrink-0 text-right hidden sm:block">{indice + 1}.</span>
       <input
         value={valor}
         onChange={e => onChange(indice, e.target.value)}
-        className="flex-1 min-w-0 border border-mist-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-mist-400 focus:ring-2 focus:ring-mist-100 transition-all"
+        className="flex-1 min-w-0 border border-mist-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-mist-400 focus:ring-2 focus:ring-mist-100 transition-all w-full"
         placeholder={"Paso " + (indice + 1)}
       />
-      <div className="flex items-center gap-1 shrink-0">
-        <button onClick={() => onSubir(indice)} disabled={indice === 0} title="Subir paso" className="btn btn-sm btn-ghost px-2 disabled:opacity-30">▲</button>
-        <button onClick={() => onBajar(indice)} disabled={indice === total - 1} title="Bajar paso" className="btn btn-sm btn-ghost px-2 disabled:opacity-30">▼</button>
-        <button onClick={() => onQuitar(indice)} title="Quitar este paso" className="btn btn-sm px-3 py-1 bg-coral-100 text-coral-700 hover:bg-coral-200 rounded-lg text-xs font-semibold">Quitar</button>
+      {/* G5/G6: controles en segunda línea en móvil, misma fila en sm+ */}
+      <div className="flex items-center gap-1 flex-wrap">
+        <button onClick={() => onSubir(indice)} disabled={indice === 0} title="Subir paso" aria-label="Subir paso" className="btn btn-sm btn-ghost px-2 min-h-[40px] disabled:opacity-30">▲</button>
+        <button onClick={() => onBajar(indice)} disabled={indice === total - 1} title="Bajar paso" aria-label="Bajar paso" className="btn btn-sm btn-ghost px-2 min-h-[40px] disabled:opacity-30">▼</button>
+        <button onClick={() => onQuitar(indice)} title="Quitar este paso" aria-label="Quitar este paso" className="btn btn-sm px-3 py-1 bg-coral-100 text-coral-700 hover:bg-coral-200 rounded-lg text-xs font-semibold min-h-[40px]">Quitar</button>
       </div>
     </div>
   );
@@ -2076,18 +2121,19 @@ const FilaPaso = React.memo(function FilaPaso({ valor, indice, total, onChange, 
 
 const FilaPregunta = React.memo(function FilaPregunta({ texto, indice, total, onChange, onSubir, onBajar, onQuitar }) {
   return (
-    <div className="flex items-center gap-3 rounded-xl border border-mist-100 bg-mist-50/40 px-4 py-3">
-      <span className="text-xs font-bold text-mist-500 w-5 shrink-0 text-right">{indice + 1}.</span>
+    <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 rounded-xl border border-mist-100 bg-mist-50/40 px-4 py-3">
+      <span className="text-xs font-bold text-mist-500 w-5 shrink-0 text-right hidden sm:block">{indice + 1}.</span>
       <input
         value={texto}
         onChange={e => onChange(indice, e.target.value)}
-        className="flex-1 min-w-0 border border-mist-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-mist-400 focus:ring-2 focus:ring-mist-100 transition-all"
+        className="flex-1 min-w-0 border border-mist-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-mist-400 focus:ring-2 focus:ring-mist-100 transition-all w-full"
         placeholder={"Pregunta " + (indice + 1)}
       />
-      <div className="flex items-center gap-1 shrink-0">
-        <button onClick={() => onSubir(indice)} disabled={indice === 0} title="Subir pregunta" className="btn btn-sm btn-ghost px-2 disabled:opacity-30">▲</button>
-        <button onClick={() => onBajar(indice)} disabled={indice === total - 1} title="Bajar pregunta" className="btn btn-sm btn-ghost px-2 disabled:opacity-30">▼</button>
-        <button onClick={() => onQuitar(indice)} title="Quitar esta pregunta" className="btn btn-sm px-3 py-1 bg-coral-100 text-coral-700 hover:bg-coral-200 rounded-lg text-xs font-semibold">Quitar</button>
+      {/* G5/G6: controles en segunda línea en móvil, misma fila en sm+ */}
+      <div className="flex items-center gap-1 flex-wrap">
+        <button onClick={() => onSubir(indice)} disabled={indice === 0} title="Subir pregunta" aria-label="Subir pregunta" className="btn btn-sm btn-ghost px-2 min-h-[40px] disabled:opacity-30">▲</button>
+        <button onClick={() => onBajar(indice)} disabled={indice === total - 1} title="Bajar pregunta" aria-label="Bajar pregunta" className="btn btn-sm btn-ghost px-2 min-h-[40px] disabled:opacity-30">▼</button>
+        <button onClick={() => onQuitar(indice)} title="Quitar esta pregunta" aria-label="Quitar esta pregunta" className="btn btn-sm px-3 py-1 bg-coral-100 text-coral-700 hover:bg-coral-200 rounded-lg text-xs font-semibold min-h-[40px]">Quitar</button>
       </div>
     </div>
   );
@@ -2287,12 +2333,14 @@ function TopicEditForm({ topic, onSave, onCancel }) {
     let emojiFinal = rawEmoji;
     try {
       if (rawEmoji && typeof Intl !== 'undefined' && Intl.Segmenter) {
+        // Camino principal: Intl.Segmenter toma el primer grapheme (funciona con emojis compuestos)
         const seg = new Intl.Segmenter();
         const [first] = seg.segment(rawEmoji);
         if (first) emojiFinal = first.segment;
       } else if (rawEmoji) {
-        // Fallback: tomar el primer punto de código (puede ser el surrogate pair de un emoji)
-        emojiFinal = [...rawEmoji].slice(0, 2).join('');
+        // G11: sin Intl.Segmenter, NO cortar por code points (puede partir emojis compuestos).
+        // El maxLength del input ya limita el largo; usamos el string tal como vino.
+        emojiFinal = rawEmoji;
       }
     } catch(e) { emojiFinal = rawEmoji; }
 
@@ -2340,7 +2388,7 @@ function TopicEditForm({ topic, onSave, onCancel }) {
               />
             </div>
             {emojiCustom.trim() && (
-              <p className="text-xs text-sea-400 mt-1">Se usará el emoji personalizado: <strong>{emojiCustom.trim()}</strong></p>
+              <p className="text-xs text-sea-500 mt-1">Se usará el emoji personalizado: <strong>{emojiCustom.trim()}</strong></p>
             )}
           </div>
         </div>
@@ -2388,7 +2436,7 @@ function TopicEditForm({ topic, onSave, onCancel }) {
         <p className="text-xs font-bold uppercase tracking-widest text-mist-500">Check-in (diagnóstico)</p>
         <div>
           <label className="text-sm font-semibold text-sea-700 block mb-1">Preguntas del diagnóstico</label>
-          <p className="text-xs text-sea-400 mb-3">Cada pregunta se responde con: Nunca / A veces / Frecuentemente / Casi siempre. Los rangos de resultado se recalculan solos según la cantidad de preguntas.</p>
+          <p className="text-xs text-sea-500 mb-3">Cada pregunta se responde con: Nunca / A veces / Frecuentemente / Casi siempre. Los rangos de resultado se recalculan solos según la cantidad de preguntas.</p>
           <div className="space-y-2">
             {questions.map((q, i) => (
               <FilaPregunta
@@ -2436,18 +2484,21 @@ function TopicEditForm({ topic, onSave, onCancel }) {
                           onClick={() => moverArriba(setLevels, levels, i)}
                           disabled={i === 0}
                           title="Subir nivel"
-                          className="btn btn-sm btn-ghost px-2 disabled:opacity-30 text-xs"
+                          aria-label="Subir nivel"
+                          className="btn btn-sm btn-ghost px-2 min-h-[40px] disabled:opacity-30 text-xs"
                         >▲</button>
                         <button
                           onClick={() => moverAbajo(setLevels, levels, i)}
                           disabled={i === levels.length - 1}
                           title="Bajar nivel"
-                          className="btn btn-sm btn-ghost px-2 disabled:opacity-30 text-xs"
+                          aria-label="Bajar nivel"
+                          className="btn btn-sm btn-ghost px-2 min-h-[40px] disabled:opacity-30 text-xs"
                         >▼</button>
                         <button
                           onClick={() => levels.length > 2 ? quitar(setLevels, levels, i) : alert('Debe haber al menos 2 niveles de resultado.')}
                           title="Quitar este nivel"
-                          className="btn btn-sm px-3 py-1 bg-coral-100 text-coral-700 hover:bg-coral-200 rounded-lg text-xs font-semibold"
+                          aria-label="Quitar este nivel"
+                          className="btn btn-sm px-3 py-1 bg-coral-100 text-coral-700 hover:bg-coral-200 rounded-lg text-xs font-semibold min-h-[40px]"
                         >Quitar</button>
                       </div>
                     </div>
@@ -2480,18 +2531,21 @@ function TopicEditForm({ topic, onSave, onCancel }) {
                       onClick={() => moverArriba(setSlides, slides, i)}
                       disabled={i === 0}
                       title="Subir diapositiva"
-                      className="btn btn-sm btn-ghost px-2 disabled:opacity-30 text-xs"
+                      aria-label="Subir diapositiva"
+                      className="btn btn-sm btn-ghost px-2 min-h-[40px] disabled:opacity-30 text-xs"
                     >▲</button>
                     <button
                       onClick={() => moverAbajo(setSlides, slides, i)}
                       disabled={i === slides.length - 1}
                       title="Bajar diapositiva"
-                      className="btn btn-sm btn-ghost px-2 disabled:opacity-30 text-xs"
+                      aria-label="Bajar diapositiva"
+                      className="btn btn-sm btn-ghost px-2 min-h-[40px] disabled:opacity-30 text-xs"
                     >▼</button>
                     <button
                       onClick={() => quitar(setSlides, slides, i)}
                       title="Quitar esta diapositiva"
-                      className="btn btn-sm px-3 py-1 bg-coral-100 text-coral-700 hover:bg-coral-200 rounded-lg text-xs font-semibold"
+                      aria-label="Quitar esta diapositiva"
+                      className="btn btn-sm px-3 py-1 bg-coral-100 text-coral-700 hover:bg-coral-200 rounded-lg text-xs font-semibold min-h-[40px]"
                     >Quitar</button>
                   </div>
                 </div>
@@ -2653,9 +2707,9 @@ function AdminPanel({ topics, price, setPrice, onSavePrice, priceError, waNumber
             >
               {savingPrice ? 'Guardando…' : 'Guardar precio'}
             </button>
-            {priceSaved && <span className="text-sm text-green-600 font-semibold">Precio guardado ✓</span>}
+            {priceSaved && <span role="status" aria-live="polite" className="text-sm text-green-600 font-semibold">Precio guardado ✓</span>}
           </div>
-          {priceError && <p className="text-sm text-red-600 mt-2">{priceError}</p>}
+          {priceError && <p role="alert" className="text-sm text-red-600 mt-2">{priceError}</p>}
 
           {/* B10: configuración de WhatsApp */}
           <div className="mt-6 pt-6 border-t border-mist-100 space-y-3">
@@ -2668,7 +2722,7 @@ function AdminPanel({ topics, price, setPrice, onSavePrice, priceError, waNumber
                 className="w-full border border-mist-200 rounded-xl px-4 py-2.5 focus:outline-none focus:border-mist-400 focus:ring-4 focus:ring-mist-100 transition-all"
                 placeholder="Ej: 5492235125610 (sin + ni espacios)"
               />
-              <p className="text-xs text-sea-400 mt-1">Ingresá el número completo sin el signo + ni espacios. Ejemplo: 5492235125610</p>
+              <p className="text-xs text-sea-500 mt-1">Ingresá el número completo sin el signo + ni espacios. Ejemplo: 5492235125610</p>
             </div>
             <div>
               <label className="text-sm font-semibold text-sea-700 block mb-1">Mensaje inicial de WhatsApp</label>
@@ -2695,9 +2749,9 @@ function AdminPanel({ topics, price, setPrice, onSavePrice, priceError, waNumber
               >
                 {savingWa ? 'Guardando…' : 'Guardar WhatsApp'}
               </button>
-              {waSaved && <span className="text-sm text-green-600 font-semibold">WhatsApp guardado ✓</span>}
+              {waSaved && <span role="status" aria-live="polite" className="text-sm text-green-600 font-semibold">WhatsApp guardado ✓</span>}
             </div>
-            {waError && <p className="text-sm text-red-600 mt-1">{waError}</p>}
+            {waError && <p role="alert" className="text-sm text-red-600 mt-1">{waError}</p>}
           </div>
 
           <div className="mt-6 pt-6 border-t border-mist-100">
@@ -2709,6 +2763,7 @@ function AdminPanel({ topics, price, setPrice, onSavePrice, priceError, waNumber
 
         {(creating || editingTopic) ? (
           <TopicEditForm
+            key={editingId || 'nuevo'}
             topic={editingTopic || null}
             onSave={saveTopic}
             onCancel={() => { setEditingId(null); setCreating(false); }}
@@ -2725,9 +2780,10 @@ function AdminPanel({ topics, price, setPrice, onSavePrice, priceError, waNumber
             <div className="space-y-3">
               {topics.map((t, i) => (
                 <div key={t.id} className="bg-white rounded-2xl border border-mist-100 p-4 flex items-center gap-3 hover:shadow-md hover:shadow-mist-100 transition-shadow">
+                  {/* G5/G9: aria-label + tap targets mínimos de 36px */}
                   <div className="flex flex-col gap-1 flex-shrink-0">
-                    <button onClick={() => onReorder(i, -1)} disabled={i === 0 || reordering} title="Subir" className="w-7 h-7 rounded-lg bg-mist-50 text-sea-600 hover:bg-mist-100 disabled:opacity-30 disabled:cursor-not-allowed flex items-center justify-center text-xs transition-colors">▲</button>
-                    <button onClick={() => onReorder(i, 1)} disabled={i === topics.length - 1 || reordering} title="Bajar" className="w-7 h-7 rounded-lg bg-mist-50 text-sea-600 hover:bg-mist-100 disabled:opacity-30 disabled:cursor-not-allowed flex items-center justify-center text-xs transition-colors">▼</button>
+                    <button onClick={() => onReorder(i, -1)} disabled={i === 0 || reordering} title="Subir ventana" aria-label="Subir ventana" className="w-9 h-9 rounded-lg bg-mist-50 text-sea-600 hover:bg-mist-100 disabled:opacity-30 disabled:cursor-not-allowed flex items-center justify-center text-xs transition-colors">▲</button>
+                    <button onClick={() => onReorder(i, 1)} disabled={i === topics.length - 1 || reordering} title="Bajar ventana" aria-label="Bajar ventana" className="w-9 h-9 rounded-lg bg-mist-50 text-sea-600 hover:bg-mist-100 disabled:opacity-30 disabled:cursor-not-allowed flex items-center justify-center text-xs transition-colors">▼</button>
                   </div>
                   <div className={"w-12 h-12 rounded-full bg-gradient-to-br " + (t.gradient || DEFAULT_GRADIENT) + " flex items-center justify-center text-xl flex-shrink-0"}>{t.emoji}</div>
                   <div className="flex-1 min-w-0">
@@ -2901,7 +2957,7 @@ function ContactoPage({ onOpenPage, waNumber, waMsg }) {
               </svg>
               <span>Abrir WhatsApp</span>
             </a>
-            <p className="text-xs text-sea-400 mt-4">Se abre con un mensaje ya escrito — podés editarlo antes de enviar.</p>
+            <p className="text-xs text-sea-500 mt-4">Se abre con un mensaje ya escrito — podés editarlo antes de enviar.</p>
           </div>
         </Reveal>
         <Reveal>
@@ -2938,6 +2994,8 @@ function App() {
   const [subscribing, setSubscribing] = React.useState(false);
   // A4: guard de reordenamiento concurrente
   const [reordering, setReordering] = React.useState(false);
+  // G1: marcar cuando la carga de topics desde la base terminó (tanto con data como sin ella)
+  const [topicsLoaded, setTopicsLoaded] = React.useState(false);
 
   React.useEffect(() => {
     sb.auth.getSession().then(({ data }) => {
@@ -2959,7 +3017,17 @@ function App() {
           if (pending) {
             // Siempre limpiamos la bandera para no dejarla colgada
             localStorage.removeItem('edm_pending_subscribe');
-            const aplicar = pending === 'oauth-pending' || pending === newSession.user.email;
+            // G10: para oauth-pending validamos que hayan pasado menos de 10 minutos desde
+            // que se guardó la bandera (evita aplicar suscripciones de sesiones viejas).
+            let aplicar = false;
+            if (pending.startsWith('oauth-pending:')) {
+              const ts = parseInt(pending.split(':')[1], 10);
+              const DIEZ_MIN = 10 * 60 * 1000;
+              aplicar = !isNaN(ts) && (Date.now() - ts) < DIEZ_MIN;
+            } else {
+              // Caso email: solo aplica si coincide con el usuario actual
+              aplicar = pending === newSession.user.email;
+            }
             if (aplicar) {
               sb.from('profiles').upsert({ id: newSession.user.id, subscribed: true, subscribed_at: new Date().toISOString() }).then(({ error }) => {
                 if (!error) setProfile(p => ({ ...(p || { id: newSession.user.id }), subscribed: true, subscribed_at: new Date().toISOString() }));
@@ -2993,7 +3061,12 @@ function App() {
         const topicsLimpios = data.map((t, idx) => ({ ...t, sort_order: idx }));
         setTopics(topicsLimpios);
       }
-    }).catch(() => {});
+      // G1: marcar que la carga terminó, haya traído datos o no
+      setTopicsLoaded(true);
+    }).catch(() => {
+      // G1: también marcar en caso de error de red (INITIAL_TOPICS siguen activos)
+      setTopicsLoaded(true);
+    });
   }, []);
 
   // Cargar precio y config de WhatsApp desde app_config (si la tabla existe); si no, mantiene los valores por defecto
@@ -3016,15 +3089,19 @@ function App() {
     }
   }, [view, pendingScroll]);
 
-  // F7: si estamos en 'detail' pero el topic ya no existe (fue borrado o aún no cargó),
-  // navegamos a home desde un effect para nunca llamar setState durante el render.
+  // F7 / G1: si estamos en 'detail' pero el topic no existe ni en la base ni en INITIAL_TOPICS,
+  // navegamos a home. Esperamos a que topicsLoaded sea true para no expulsar durante el pre-load.
   React.useEffect(() => {
-    if (view === 'detail' && activeTopicId && !topics.find(t => t.id === activeTopicId)) {
-      setView('home');
-      setActiveTopicId(null);
-      window.scrollTo(0, 0);
+    if (view === 'detail' && activeTopicId && topicsLoaded) {
+      const enBase = topics.find(t => t.id === activeTopicId);
+      const enInicial = INITIAL_TOPICS.find(t => t.id === activeTopicId);
+      if (!enBase && !enInicial) {
+        setView('home');
+        setActiveTopicId(null);
+        window.scrollTo(0, 0);
+      }
     }
-  }, [view, activeTopicId, topics]);
+  }, [view, activeTopicId, topics, topicsLoaded]);
 
   // M5: helper para cerrar overlays al navegar
   function closeOverlays() { setShowProfile(false); setShowAuthModal(false); }
@@ -3081,8 +3158,9 @@ function App() {
   }
 
   async function signOutUser() {
-    await sb.auth.signOut();
-    goHome();
+    // G8: envolver en try/catch/finally para que siempre cierre aunque falle la red
+    try { await sb.auth.signOut(); } catch(e) {}
+    finally { goHome(); }
   }
 
   async function saveProfileFields(fields) {
@@ -3119,8 +3197,14 @@ function App() {
   async function handleAuthed(shouldSubscribe) {
     setShowAuthModal(false);
     if (!shouldSubscribe) return;
-    const { data } = await sb.auth.getSession();
-    if (data.session) await markSubscribedForUser(data.session.user.id);
+    // G8: envolver en try/catch para no dejar el flujo colgado si falla la sesión o la red
+    try {
+      const { data } = await sb.auth.getSession();
+      if (data && data.session) await markSubscribedForUser(data.session.user.id);
+    } catch(e) {
+      // Aviso suave al usuario; no bloqueamos el flujo
+      alert('No pudimos activar la suscripción. Podés intentarlo desde Mi cuenta cuando quieras.');
+    }
   }
 
   async function saveTopicToDb(updated) {
@@ -3225,7 +3309,7 @@ function App() {
   if (!authChecked) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-sand-50">
-        <p className="text-sea-400 text-sm">Cargando…</p>
+        <p className="text-sea-500 text-sm">Cargando…</p>
       </div>
     );
   }
@@ -3301,9 +3385,10 @@ function App() {
   }
 
   if (view === 'detail') {
-    const topic = topics.find(t => t.id === activeTopicId);
-    // F7: si el topic no existe, el useEffect de arriba ya va a navegar a home.
-    // Retornamos null sin llamar goHome() en el render (eso violaría las reglas de React).
+    // G1: resolver topic con fallback a INITIAL_TOPICS para ventanas de ejemplo
+    const topic = topics.find(t => t.id === activeTopicId) || INITIAL_TOPICS.find(t => t.id === activeTopicId);
+    // F7 / G1: si el topic no existe en ningún lado, el useEffect ya va a navegar a home.
+    // Si todavía no cargó (topicsLoaded false), mostramos null sin llamar goHome().
     if (!topic) { return null; }
     return (
       <React.Fragment>
@@ -3338,6 +3423,32 @@ function App() {
 
 const root = ReactDOM.createRoot(document.getElementById('root'));
 root.render(<App />);
+</script>
+
+<!-- G2: guardián de CDN — si React/Supabase/Babel no cargaron a tiempo, muestra aviso sin depender de ninguna librería -->
+<script>
+(function() {
+  function mostrarError() {
+    var root = document.getElementById('root');
+    if (!root) return;
+    // Solo actuar si el root sigue vacío o si faltan dependencias críticas
+    var faltaDependencia = !window.React || !window.ReactDOM || !window.Babel || !window.supabase;
+    var rootVacio = root.childElementCount === 0;
+    if (!faltaDependencia && !rootVacio) return;
+    document.body.style.margin = '0';
+    document.body.style.fontFamily = 'sans-serif';
+    document.body.style.background = '#f4faf9';
+    root.innerHTML =
+      '<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;padding:2rem;text-align:center;">' +
+        '<div style="font-size:3rem;margin-bottom:1rem;">🌊</div>' +
+        '<h2 style="color:#1d515f;font-size:1.4rem;margin-bottom:0.75rem;">No pudimos cargar el sitio</h2>' +
+        '<p style="color:#2f7f8f;max-width:26rem;margin-bottom:1.5rem;line-height:1.6;">Revisá tu conexión a internet y volvé a intentar. Si el problema continúa, puede haber una falla temporal en los servidores de carga.</p>' +
+        '<button onclick="location.reload()" style="background:#2f7f8f;color:#fff;border:none;border-radius:9999px;padding:0.75rem 2rem;font-size:1rem;font-weight:700;cursor:pointer;">Recargar</button>' +
+      '</div>';
+  }
+  // Esperar 6 segundos para dar tiempo a que los CDN respondan y React renderice
+  setTimeout(mostrarError, 6000);
+})();
 </script>
 </body>
 </html>
