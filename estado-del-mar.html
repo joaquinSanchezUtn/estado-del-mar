@@ -1354,7 +1354,7 @@ function TopicsGrid({ topics, subscribed, onSelect }) {
   return (
     <section id="ventanas" className="max-w-6xl mx-auto px-6 py-20">
       <Reveal className="text-center max-w-2xl mx-auto mb-14">
-        <p className="uppercase tracking-widest text-xs text-coral-600 font-bold mb-3">Las ventanas</p>
+        <Overline>Las ventanas</Overline>
         <h2 className="font-serif text-4xl md:text-5xl font-semibold text-sea-900">Cada estado interior tiene su propia ventana</h2>
         <p className="text-sea-600 mt-4">Elegí la que más resuena con lo que estás atravesando hoy. Podés mirar el menú completo sin suscribirte; para entrar a cada ventana hace falta ser parte de Estado del Mar.</p>
       </Reveal>
@@ -1487,6 +1487,16 @@ const HERO_BUBBLE_POS = [
 ];
 
 // B7: Hero recibe los topics reales (del estado/DB) para mostrar las burbujas actualizadas
+// Etiqueta de sección (overline): pastilla coral con puntito, para que resalte más.
+function Overline({ children, className }) {
+  return (
+    <span className={"inline-flex items-center gap-2 rounded-full bg-coral-50 border border-coral-100 px-4 py-1.5 mb-5 " + (className || "")}>
+      <span className="w-1.5 h-1.5 rounded-full bg-coral-500" aria-hidden="true"></span>
+      <span className="uppercase tracking-widest text-[11px] font-bold text-coral-600">{children}</span>
+    </span>
+  );
+}
+
 function Hero({ onOpenSubscribe, topics: heroTopics }) {
   // Si no se pasan topics (compatibilidad hacia atrás), usa INITIAL_TOPICS como fallback
   const bubbleTopics = (heroTopics && heroTopics.length > 0 ? heroTopics : INITIAL_TOPICS).slice(0, 10);
@@ -1517,7 +1527,7 @@ function Hero({ onOpenSubscribe, topics: heroTopics }) {
       })}
 
       <div className="max-w-4xl mx-auto px-6 pt-24 pb-32 text-center relative z-10">
-        <p className="uppercase tracking-[0.25em] text-xs text-coral-600 font-bold mb-6 animate-fadein">Un espacio para mirar hacia adentro</p>
+        <Overline className="animate-fadein">Un espacio para mirar hacia adentro</Overline>
         <h1 className="font-serif text-6xl md:text-7xl font-semibold mb-6 animate-fadein leading-none text-sea-900">Estado del Mar</h1>
         <p className="text-lg md:text-xl text-sea-700 max-w-2xl mx-auto leading-relaxed mb-10 animate-fadein">
           Así como el mar cambia de estado según el día, nosotros también. Elegí la ventana que refleja por dónde estás pasando hoy,
@@ -1544,7 +1554,7 @@ function HowItWorks() {
     <section id="como-funciona" className="py-24 bg-white">
       <div className="max-w-5xl mx-auto px-6">
         <Reveal className="text-center max-w-2xl mx-auto mb-14">
-          <p className="uppercase tracking-widest text-xs text-coral-600 font-bold mb-3">Cómo funciona</p>
+          <Overline>Cómo funciona</Overline>
           <h2 className="font-serif text-4xl md:text-5xl font-semibold text-sea-900">Tres pasos, a tu propio ritmo</h2>
         </Reveal>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -1570,7 +1580,7 @@ function PricingSection({ price, subscribed, onOpenSubscribe, onOpenPage, onGoWi
       <div className="absolute -top-20 right-10 w-80 h-80 rounded-full bg-coral-200/40 blur-3xl animate-aurora"></div>
       <div className="absolute bottom-0 -left-20 w-96 h-96 rounded-full bg-mist-200/40 blur-3xl animate-aurora" style={{ animationDelay: '-6s' }}></div>
       <div className="max-w-lg mx-auto px-6 text-center relative z-10">
-        <p className="uppercase tracking-widest text-xs text-coral-600 font-bold mb-3">Membresía</p>
+        <Overline>Membresía</Overline>
         <h2 className="font-serif text-4xl md:text-5xl font-semibold mb-10 text-sea-900">Una sola suscripción, todas las ventanas</h2>
         <Reveal>
           <div className="bg-white border border-mist-100 rounded-3xl p-10 shadow-xl shadow-mist-200/40">
@@ -2817,7 +2827,7 @@ function PageBanner({ overline, title, subtitle }) {
       <div className="absolute -top-24 -right-16 w-80 h-80 rounded-full bg-coral-200/40 blur-3xl animate-aurora"></div>
       <div className="absolute -bottom-16 -left-24 w-96 h-96 rounded-full bg-mist-200/40 blur-3xl animate-aurora" style={{ animationDelay: '-5s' }}></div>
       <div className="max-w-3xl mx-auto px-6 pt-16 pb-14 text-center relative z-10">
-        <p className="uppercase tracking-[0.25em] text-xs text-coral-600 font-bold mb-4 animate-fadein">{overline}</p>
+        <Overline className="animate-fadein">{overline}</Overline>
         <h1 className="font-serif text-4xl md:text-5xl font-semibold mb-4 text-sea-900 animate-fadein">{title}</h1>
         {subtitle && <p className="text-sea-700 leading-relaxed max-w-xl mx-auto animate-fadein">{subtitle}</p>}
       </div>
