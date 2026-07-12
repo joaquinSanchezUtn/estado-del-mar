@@ -618,6 +618,19 @@ function slugify(str) {
     .replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '') || ('ventana-' + Date.now());
 }
 
+// M8: mapea mensajes de error de Supabase (en inglés) a español legible
+function traducirError(msg) {
+  if (!msg) return 'Ocurrió un error, probá de nuevo.';
+  const m = msg.toLowerCase();
+  if (m.includes('invalid login credentials')) return 'Email o contraseña incorrectos.';
+  if (m.includes('user already registered') || m.includes('already registered')) return 'Ese email ya está registrado.';
+  if (m.includes('password should be at least')) return 'La contraseña debe tener al menos 6 caracteres.';
+  if (m.includes('email not confirmed')) return 'Tenés que confirmar tu email antes de entrar.';
+  if (m.includes('rate limit')) return 'Demasiados intentos. Esperá unos minutos y probá de nuevo.';
+  if (m.includes('network') || m.includes('fetch')) return 'Error de conexión. Verificá tu internet y probá de nuevo.';
+  return 'Ocurrió un error, probá de nuevo. (' + msg + ')';
+}
+
 /* ===== estado-del-mar.02-ui-basics.js ===== */
 
 function WaveDivider({ className, flip }) {
@@ -644,17 +657,70 @@ function Lock({ className }) {
   return <span className={className}>🔒</span>;
 }
 
-function Modal({ onClose, children, maxW }) {
+// M7: hook de focus trap — atrapa Tab/Shift+Tab dentro del contenedor y devuelve foco al elemento previo al desmontar
+function useFocusTrap(ref) {
   React.useEffect(() => {
-    const onKey = e => { if (e.key === 'Escape') onClose(); };
-    window.addEventListener('keydown', onKey);
+    const previousFocus = document.activeElement;
+    // Mover foco al contenedor o primer elemento enfocable
+    if (ref.current) {
+      const focusable = ref.current.querySelectorAll(
+        'a[href],button:not([disabled]),input:not([disabled]),select:not([disabled]),textarea:not([disabled]),[tabindex]:not([tabindex="-1"])'
+      );
+      if (focusable.length > 0) {
+        focusable[0].focus();
+      } else {
+        ref.current.focus();
+      }
+    }
+    function handleTab(e) {
+      if (e.key !== 'Tab' || !ref.current) return;
+      const focusable = Array.from(ref.current.querySelectorAll(
+        'a[href],button:not([disabled]),input:not([disabled]),select:not([disabled]),textarea:not([disabled]),[tabindex]:not([tabindex="-1"])'
+      )).filter(el => !el.closest('[hidden]'));
+      if (focusable.length === 0) { e.preventDefault(); return; }
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      if (e.shiftKey) {
+        if (document.activeElement === first) { e.preventDefault(); last.focus(); }
+      } else {
+        if (document.activeElement === last) { e.preventDefault(); first.focus(); }
+      }
+    }
+    window.addEventListener('keydown', handleTab);
+    return () => {
+      window.removeEventListener('keydown', handleTab);
+      // Devolver foco al elemento que lo tenía antes de abrir
+      if (previousFocus && typeof previousFocus.focus === 'function') {
+        try { previousFocus.focus(); } catch(e) {}
+      }
+    };
+  }, []);
+}
+
+function Modal({ onClose, children, maxW }) {
+  // M7: ref al onClose para no re-suscribir el listener en cada render
+  const onCloseRef = React.useRef(onClose);
+  React.useEffect(() => { onCloseRef.current = onClose; }, [onClose]);
+
+  const containerRef = React.useRef(null);
+  useFocusTrap(containerRef); // M7: focus trap
+
+  // M6: captura el overflow original UNA sola vez al montar; lo restaura al desmontar
+  React.useEffect(() => {
     const prev = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
-    return () => { window.removeEventListener('keydown', onKey); document.body.style.overflow = prev; };
-  }, [onClose]);
+    return () => { document.body.style.overflow = prev; };
+  }, []);
+
+  // M6/M7: listener de Escape separado, usa ref para no re-suscribir
+  React.useEffect(() => {
+    const onKey = e => { if (e.key === 'Escape') onCloseRef.current(); };
+    window.addEventListener('keydown', onKey);
+    return () => { window.removeEventListener('keydown', onKey); };
+  }, []);
   return (
     <div className="fixed inset-0 z-50 bg-sea-900/40 backdrop-blur-sm flex items-center justify-center p-4 animate-fadein" onClick={onClose}>
-      <div onClick={e => e.stopPropagation()} className={"bg-white rounded-3xl shadow-2xl w-full max-h-[90vh] overflow-y-auto animate-fadein " + (maxW || "max-w-md")}>
+      <div ref={containerRef} onClick={e => e.stopPropagation()} className={"bg-white rounded-3xl shadow-2xl w-full max-h-[90vh] overflow-y-auto animate-fadein " + (maxW || "max-w-md")}>
         {children}
       </div>
     </div>
@@ -810,7 +876,8 @@ function DiagnosticQuiz({ topic, onComplete }) {
   }
 
   function choose(value) {
-    const next = [...answers, value];
+    // Reemplazá la respuesta actual si ya existía (al volver y re-responder)
+    const next = [...answers.slice(0, current), value];
     setAnswers(next);
     if (current + 1 < questions.length) {
       setCurrent(current + 1);
@@ -819,6 +886,14 @@ function DiagnosticQuiz({ topic, onComplete }) {
       const level = computeLevel(total, levels, questions.length);
       setResult({ total, level });
       if (onComplete) onComplete(level);
+    }
+  }
+
+  // M3: volver a la pregunta anterior
+  function goBack() {
+    if (current > 0) {
+      setCurrent(current - 1);
+      setAnswers(answers.slice(0, -1));
     }
   }
 
@@ -855,6 +930,12 @@ function DiagnosticQuiz({ topic, onComplete }) {
           </button>
         ))}
       </div>
+      {/* M3: botón para volver a la pregunta anterior */}
+      {current > 0 && (
+        <div className="mt-5 text-center">
+          <button onClick={goBack} className="btn btn-ghost btn-sm">← Anterior</button>
+        </div>
+      )}
     </div>
   );
 }
@@ -1019,8 +1100,22 @@ function VideoPlayer({ src }) {
 
 /* ===== estado-del-mar.06-exercise-checklist.js ===== */
 
-function ExerciseChecklist({ exercise }) {
-  const [done, setDone] = React.useState({});
+function ExerciseChecklist({ exercise, storageKey }) {
+  // M4: cargá el estado desde localStorage al montar (si hay storageKey)
+  const [done, setDone] = React.useState(() => {
+    if (!storageKey) return {};
+    try {
+      const saved = localStorage.getItem('edm_checklist_' + storageKey);
+      return saved ? JSON.parse(saved) : {};
+    } catch(e) { return {}; }
+  });
+
+  // M4: guardá en localStorage cada vez que cambia `done`
+  React.useEffect(() => {
+    if (!storageKey) return;
+    try { localStorage.setItem('edm_checklist_' + storageKey, JSON.stringify(done)); } catch(e) {}
+  }, [done, storageKey]);
+
   function toggle(i) { setDone(d => ({ ...d, [i]: !d[i] })); }
 
   // Guard: si no hay ejercicio o steps, mostrá estado vacío
@@ -1363,23 +1458,32 @@ function AuthModal({ intent, initialMode, onClose, onAuthed }) {
 
   async function handleGoogle() {
     setError('');
+    // M11: si la intención es suscribirse, guardá la bandera antes del redirect OAuth
+    if (intent === 'subscribe') {
+      try { localStorage.setItem('edm_pending_subscribe', '1'); } catch(e) {}
+    }
     const { error: err } = await sb.auth.signInWithOAuth({
       provider: 'google',
       options: { redirectTo: window.location.origin },
     });
-    if (err) setError(err.message);
+    if (err) setError(traducirError(err.message)); // M8
   }
 
   async function handleSubmit() {
     setError('');
-    if (!email || !password) { setError('Completá email y contraseña.'); return; }
+    // M10: validación de formato email
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!email || !emailRegex.test(email)) { setError('Ingresá un email válido.'); return; }
+    if (!password) { setError('Completá la contraseña.'); return; }
+    // M10: validación de contraseña mínima en signup
+    if (mode === 'signup' && password.length < 6) { setError('La contraseña debe tener al menos 6 caracteres.'); return; }
     setLoading(true);
     if (mode === 'signup') {
       const { data, error: err } = await sb.auth.signUp({
         email, password, options: { data: { name } },
       });
       setLoading(false);
-      if (err) { setError(err.message); return; }
+      if (err) { setError(traducirError(err.message)); return; } // M8
       if (!data.session) {
         // Supabase requiere confirmación de email: guardamos la intención si era suscribirse
         if (intent === 'subscribe') {
@@ -1392,7 +1496,7 @@ function AuthModal({ intent, initialMode, onClose, onAuthed }) {
     } else {
       const { error: err } = await sb.auth.signInWithPassword({ email, password });
       setLoading(false);
-      if (err) { setError(err.message); return; }
+      if (err) { setError(traducirError(err.message)); return; } // M8
       onAuthed(false);
     }
   }
@@ -1444,7 +1548,8 @@ function AuthModal({ intent, initialMode, onClose, onAuthed }) {
           </div>
         )}
 
-        <div className="space-y-4 mt-2">
+        {/* M9: <form> para que Enter envíe el formulario */}
+        <form onSubmit={e => { e.preventDefault(); handleSubmit(); }} className="space-y-4 mt-2">
           {mode === 'signup' && (
             <div>
               <label className="text-sm font-semibold text-sea-700 block mb-1">Nombre</label>
@@ -1459,11 +1564,11 @@ function AuthModal({ intent, initialMode, onClose, onAuthed }) {
             <label className="text-sm font-semibold text-sea-700 block mb-1">Contraseña</label>
             <input value={password} onChange={e => setPassword(e.target.value)} type="password" className="w-full border border-mist-200 rounded-xl px-4 py-2.5 focus:outline-none focus:border-mist-400 focus:ring-4 focus:ring-mist-100 transition-all" placeholder="••••••••" />
           </div>
-        </div>
-        {error && <p className="text-sm text-red-600 mt-3">{error}</p>}
-        <button onClick={handleSubmit} disabled={loading} className="btn btn-primary btn-block mt-6 disabled:opacity-50">
-          {loading ? 'Un momento…' : (mode === 'signup' ? (intent === 'subscribe' ? 'Crear cuenta y suscribirme' : 'Crear cuenta') : 'Iniciar sesión')}
-        </button>
+          {error && <p className="text-sm text-red-600 mt-1">{error}</p>}
+          <button type="submit" disabled={loading} className="btn btn-primary btn-block mt-2 disabled:opacity-50">
+            {loading ? 'Un momento…' : (mode === 'signup' ? (intent === 'subscribe' ? 'Crear cuenta y suscribirme' : 'Crear cuenta') : 'Iniciar sesión')}
+          </button>
+        </form>
         <button onClick={() => { setMode(mode === 'signup' ? 'login' : 'signup'); setError(''); }} className="btn-link w-full text-sea-600 text-sm mt-4 hover:text-sea-800 inline-block">
           {mode === 'signup' ? '¿Ya tenés cuenta? Iniciá sesión' : '¿No tenés cuenta? Registrate'}
         </button>
@@ -1484,17 +1589,26 @@ function ProfileDrawer({ email, profile, subscribed, subscribeDate, isAdmin, sub
   const [saving, setSaving] = React.useState(false);
   const [savedMsg, setSavedMsg] = React.useState('');
 
-  // Cerrar con Escape + bloquear el scroll del fondo mientras el panel está abierto
+  const drawerRef = React.useRef(null);
+  useFocusTrap(drawerRef); // M7: focus trap en el drawer
+
+  // M7: ref al onClose para no re-suscribir el listener en cada render
+  const onCloseRef = React.useRef(onClose);
+  React.useEffect(() => { onCloseRef.current = onClose; }, [onClose]);
+
+  // M6: captura el overflow original UNA sola vez al montar; lo restaura al desmontar
   React.useEffect(() => {
-    const onKey = e => { if (e.key === 'Escape') onClose(); };
-    window.addEventListener('keydown', onKey);
     const prevOverflow = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
-    return () => {
-      window.removeEventListener('keydown', onKey);
-      document.body.style.overflow = prevOverflow;
-    };
-  }, [onClose]);
+    return () => { document.body.style.overflow = prevOverflow; };
+  }, []);
+
+  // M6/M7: listener de Escape separado, usa ref para no re-suscribir
+  React.useEffect(() => {
+    const onKey = e => { if (e.key === 'Escape') onCloseRef.current(); };
+    window.addEventListener('keydown', onKey);
+    return () => { window.removeEventListener('keydown', onKey); };
+  }, []);
 
   async function handleSave() {
     setSaving(true);
@@ -1504,7 +1618,7 @@ function ProfileDrawer({ email, profile, subscribed, subscribeDate, isAdmin, sub
       birth_date: birthDate || null, motivation,
     });
     setSaving(false);
-    setSavedMsg(error ? ('No se pudo guardar: ' + error) : 'Guardado ✓');
+    setSavedMsg(error ? traducirError(error) : 'Guardado ✓'); // M8: error en español
   }
 
   const inputCls = "w-full border border-mist-200 rounded-xl px-4 py-2.5 focus:outline-none focus:border-mist-400 focus:ring-4 focus:ring-mist-100 transition-all";
@@ -1515,7 +1629,7 @@ function ProfileDrawer({ email, profile, subscribed, subscribeDate, isAdmin, sub
     <div className="fixed inset-0 z-50 flex justify-end items-start">
       <div className="absolute inset-0 bg-sea-900/40 backdrop-blur-sm animate-fadein" onClick={onClose}></div>
 
-      <div className="drawer-panel relative w-full max-w-md m-3 rounded-3xl bg-sand-50 shadow-2xl overflow-y-auto max-h-[calc(100vh-1.5rem)]">
+      <div ref={drawerRef} className="drawer-panel relative w-full max-w-md m-3 rounded-3xl bg-sand-50 shadow-2xl overflow-y-auto max-h-[calc(100vh-1.5rem)]">
         {/* Encabezado (queda fijo arriba mientras scrolleás) */}
         <div className="sticky top-0 z-10 bg-gradient-to-br from-mist-500 to-sea-600 text-white px-6 pt-5 pb-5 overflow-hidden">
           <div className="absolute -top-10 -right-8 w-40 h-40 rounded-full bg-white/10 blur-2xl animate-aurora pointer-events-none"></div>
@@ -1573,45 +1687,47 @@ function ProfileDrawer({ email, profile, subscribed, subscribeDate, isAdmin, sub
             )}
           </div>
 
-          {/* Datos personales */}
+          {/* Datos personales — M9: form para que Enter guarde */}
           <div className="bg-white rounded-2xl border border-mist-100 p-5 shadow-sm">
             <h3 className="font-serif text-lg text-sea-900 mb-4">Datos personales</h3>
-            <div className="space-y-4">
-              <div>
-                <label className="text-sm font-semibold text-sea-700 block mb-1">Nombre completo</label>
-                <input value={fullName} onChange={e => setFullName(e.target.value)} className={inputCls} />
-              </div>
-              <div className="grid grid-cols-2 gap-3">
+            <form onSubmit={e => { e.preventDefault(); handleSave(); }}>
+              <div className="space-y-4">
                 <div>
-                  <label className="text-sm font-semibold text-sea-700 block mb-1">Teléfono</label>
-                  <input value={phone} onChange={e => setPhone(e.target.value)} className={inputCls} placeholder="+54 9 ..." />
+                  <label className="text-sm font-semibold text-sea-700 block mb-1">Nombre completo</label>
+                  <input value={fullName} onChange={e => setFullName(e.target.value)} className={inputCls} />
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="text-sm font-semibold text-sea-700 block mb-1">Teléfono</label>
+                    <input value={phone} onChange={e => setPhone(e.target.value)} className={inputCls} placeholder="+54 9 ..." />
+                  </div>
+                  <div>
+                    <label className="text-sm font-semibold text-sea-700 block mb-1">Nacimiento</label>
+                    <input type="date" value={birthDate || ''} onChange={e => setBirthDate(e.target.value)} className={inputCls} />
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="text-sm font-semibold text-sea-700 block mb-1">País</label>
+                    <input value={country} onChange={e => setCountry(e.target.value)} className={inputCls} placeholder="Argentina" />
+                  </div>
+                  <div>
+                    <label className="text-sm font-semibold text-sea-700 block mb-1">Ciudad</label>
+                    <input value={city} onChange={e => setCity(e.target.value)} className={inputCls} />
+                  </div>
                 </div>
                 <div>
-                  <label className="text-sm font-semibold text-sea-700 block mb-1">Nacimiento</label>
-                  <input type="date" value={birthDate || ''} onChange={e => setBirthDate(e.target.value)} className={inputCls} />
+                  <label className="text-sm font-semibold text-sea-700 block mb-1">¿Qué te trae a Estado del Mar?</label>
+                  <textarea value={motivation} onChange={e => setMotivation(e.target.value)} rows="3" className={inputCls} />
                 </div>
               </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="text-sm font-semibold text-sea-700 block mb-1">País</label>
-                  <input value={country} onChange={e => setCountry(e.target.value)} className={inputCls} placeholder="Argentina" />
-                </div>
-                <div>
-                  <label className="text-sm font-semibold text-sea-700 block mb-1">Ciudad</label>
-                  <input value={city} onChange={e => setCity(e.target.value)} className={inputCls} />
-                </div>
+              <div className="flex items-center gap-3 mt-5">
+                <button type="submit" disabled={saving} className="btn btn-primary btn-sm disabled:opacity-50">
+                  {saving ? 'Guardando…' : 'Guardar cambios'}
+                </button>
+                {savedMsg && <span className="text-sm text-mist-600 font-semibold animate-fadein">{savedMsg}</span>}
               </div>
-              <div>
-                <label className="text-sm font-semibold text-sea-700 block mb-1">¿Qué te trae a Estado del Mar?</label>
-                <textarea value={motivation} onChange={e => setMotivation(e.target.value)} rows="3" className={inputCls} />
-              </div>
-            </div>
-            <div className="flex items-center gap-3 mt-5">
-              <button onClick={handleSave} disabled={saving} className="btn btn-primary btn-sm disabled:opacity-50">
-                {saving ? 'Guardando…' : 'Guardar cambios'}
-              </button>
-              {savedMsg && <span className="text-sm text-mist-600 font-semibold animate-fadein">{savedMsg}</span>}
-            </div>
+            </form>
           </div>
 
           {/* Admin */}
@@ -1689,7 +1805,7 @@ function TopicDetail({ topic, subscribed, onBack, onOpenSubscribe }) {
           {tab === 'contenido' && <SlideViewer slides={topic.slides} />}
           {tab === 'video' && topic.video_url && <VideoPlayer src={topic.video_url} />}
           {tab === 'meditacion' && <MeditationPlayer meditation={topic.meditation} audioUrl={topic.audio_url} />}
-          {tab === 'ejercicio' && <ExerciseChecklist exercise={topic.exercise} />}
+          {tab === 'ejercicio' && <ExerciseChecklist exercise={topic.exercise} storageKey={topic.id} />}
         </div>
       )}
     </div>
@@ -2000,7 +2116,8 @@ function TopicEditForm({ topic, onSave, onCancel }) {
       </div>
 
       <div className="flex gap-3 pt-2 border-t border-mist-100">
-        <button onClick={handleSave} className="btn btn-primary mt-4">Guardar ventana</button>
+        {/* M2: deshabilitado visualmente cuando el título está vacío */}
+        <button onClick={handleSave} disabled={!title.trim()} className="btn btn-primary mt-4 disabled:opacity-40 disabled:cursor-not-allowed">Guardar ventana</button>
         <button onClick={handleCancel} className="btn btn-ghost mt-4">Cancelar</button>
       </div>
     </div>
@@ -2016,6 +2133,14 @@ function AdminPanel({ topics, price, setPrice, onSavePrice, priceError, onExit, 
   const [priceSaved, setPriceSaved] = React.useState(false);
 
   async function saveTopic(updated) {
+    // M1: si es creación (no hay editingId), verificar que el slug no colisione con una ventana existente
+    if (creating && !editingId) {
+      const colision = topics.some(t => t.id === updated.id);
+      if (colision) {
+        alert('Ya existe una ventana con ese nombre. Elegí un título distinto.');
+        return;
+      }
+    }
     setSaving(true);
     await onSaveTopic(updated);
     setSaving(false);
@@ -2369,9 +2494,13 @@ function App() {
     }
   }, [view, pendingScroll]);
 
-  function goHome() { setView('home'); setActiveTopicId(null); window.scrollTo(0,0); }
-  function selectTopic(id) { setActiveTopicId(id); setView('detail'); }
+  // M5: helper para cerrar overlays al navegar
+  function closeOverlays() { setShowProfile(false); setShowAuthModal(false); }
+
+  function goHome() { closeOverlays(); setView('home'); setActiveTopicId(null); window.scrollTo(0,0); }
+  function selectTopic(id) { closeOverlays(); setActiveTopicId(id); setView('detail'); }
   function goToSection(sectionId) {
+    closeOverlays();
     if (view === 'home') {
       const el = document.getElementById(sectionId);
       if (el) el.scrollIntoView({ behavior: 'smooth' });
@@ -2382,6 +2511,7 @@ function App() {
     }
   }
   function openPage(pageId) {
+    closeOverlays();
     setActiveTopicId(null);
     setView(pageId);
     window.scrollTo(0, 0);
@@ -2461,7 +2591,7 @@ function App() {
 
   async function saveTopicToDb(updated) {
     const { error } = await sb.from('topics').upsert(updated);
-    if (error) { alert('No se pudo guardar: ' + error.message); return; }
+    if (error) { alert('No se pudo guardar: ' + traducirError(error.message)); return; } // M8
     setTopics(prev => {
       const exists = prev.some(t => t.id === updated.id);
       return exists ? prev.map(t => t.id === updated.id ? updated : t) : [...prev, updated];
@@ -2470,7 +2600,7 @@ function App() {
 
   async function deleteTopicFromDb(id) {
     const { error } = await sb.from('topics').delete().eq('id', id);
-    if (error) { alert('No se pudo eliminar: ' + error.message); return; }
+    if (error) { alert('No se pudo eliminar: ' + traducirError(error.message)); return; } // M8
     setTopics(prev => prev.filter(t => t.id !== id));
   }
 
@@ -2510,7 +2640,7 @@ function App() {
     setPriceError('');
     const { error } = await sb.from('app_config').upsert({ id: 'main', price: newPrice });
     if (error) {
-      setPriceError('No se pudo guardar el precio: ' + error.message);
+      setPriceError('No se pudo guardar el precio: ' + traducirError(error.message)); // M8
       return false;
     }
     setPrice(newPrice);
@@ -2519,7 +2649,7 @@ function App() {
 
   async function seedInitialTopics() {
     const { error } = await sb.from('topics').upsert(INITIAL_TOPICS);
-    if (error) { alert('No se pudo cargar el contenido inicial: ' + error.message); return; }
+    if (error) { alert('No se pudo cargar el contenido inicial: ' + traducirError(error.message)); return; } // M8
     const { data } = await sb.from('topics').select('*').order('created_at', { ascending: true });
     if (data) setTopics(data);
   }
@@ -2573,7 +2703,7 @@ function App() {
           onSubscribe={markSubscribed}
           onCancelSubscription={cancelSubscription}
           onSignOut={() => { setShowProfile(false); signOutUser(); }}
-          onOpenAdmin={() => setView('admin')}
+          onOpenAdmin={() => { closeOverlays(); setView('admin'); }}
           onClose={() => setShowProfile(false)}
         />
       )}
@@ -2595,7 +2725,7 @@ function App() {
             {view === 'faq' && <FaqPage onOpenPage={openPage} />}
             {view === 'contacto' && <ContactoPage onOpenPage={openPage} />}
           </ErrorBoundary>
-          <Footer onOpenAdmin={() => setView('admin')} showAdminLink={isAdmin} onOpenPage={openPage} />
+          <Footer onOpenAdmin={() => { closeOverlays(); setView('admin'); }} showAdminLink={isAdmin} onOpenPage={openPage} />
         </div>
         {overlays}
       </React.Fragment>
@@ -2612,7 +2742,7 @@ function App() {
           <ErrorBoundary>
             <TopicDetail topic={topic} subscribed={subscribed} onBack={goHome} onOpenSubscribe={openSubscribeFlow} />
           </ErrorBoundary>
-          <Footer onOpenAdmin={() => setView('admin')} showAdminLink={isAdmin} onOpenPage={openPage} />
+          <Footer onOpenAdmin={() => { closeOverlays(); setView('admin'); }} showAdminLink={isAdmin} onOpenPage={openPage} />
         </div>
         {overlays}
       </React.Fragment>
@@ -2629,7 +2759,7 @@ function App() {
           <HowItWorks />
           <PricingSection price={price} subscribed={subscribed} onOpenSubscribe={openSubscribeFlow} onOpenPage={openPage} onGoWindows={() => goToSection('ventanas')} />
         </ErrorBoundary>
-        <Footer onOpenAdmin={() => setView('admin')} showAdminLink={isAdmin} onOpenPage={openPage} />
+        <Footer onOpenAdmin={() => { closeOverlays(); setView('admin'); }} showAdminLink={isAdmin} onOpenPage={openPage} />
       </div>
       {overlays}
     </React.Fragment>
