@@ -1624,10 +1624,14 @@ function Footer({ onOpenAdmin, showAdminLink, onOpenPage }) {
           <button onClick={() => onOpenPage('faq')} className="btn-link hover:text-sea-900">Preguntas frecuentes</button>
           <button onClick={() => onOpenPage('contacto')} className="btn-link hover:text-sea-900">Contacto</button>
         </nav>
-        <p className="text-sm leading-relaxed max-w-xl mx-auto mb-6">
+        <p className="text-sm leading-relaxed max-w-xl mx-auto mb-3">
           Estado del Mar ofrece contenido psicoeducativo, filosófico y espiritual con fines orientativos. No reemplaza un tratamiento
-          ni la atención de un profesional de salud mental. Si estás atravesando una crisis o necesitás ayuda inmediata, por favor
-          contactá a un profesional o a una línea de ayuda de tu país.
+          ni la atención de un profesional de salud mental.
+        </p>
+        <p className="text-sm leading-relaxed max-w-xl mx-auto mb-6 text-sea-700 bg-mist-50 border border-mist-200 rounded-2xl px-4 py-3">
+          Si estás atravesando una crisis o tenés pensamientos de hacerte daño, por favor comunicate con un profesional de confianza
+          o con una línea de asistencia. En Argentina: <strong>135</strong> (CABA / GBA, las 24 hs) o{' '}
+          <strong>(011) 5275-1135</strong> (Centro de Asistencia al Suicida, gratuito, todo el país).
         </p>
         {showAdminLink && <button onClick={onOpenAdmin} className="btn-link text-xs text-sea-500 hover:text-sea-700">Panel de administración</button>}
         <p className="text-xs text-sea-500 mt-8">Prototipo navegable — pagos reales todavía no conectados.</p>
@@ -1779,6 +1783,11 @@ function AuthModal({ intent, initialMode, onClose, onAuthed }) {
             {loading ? 'Un momento…' : (mode === 'signup' ? (intent === 'subscribe' ? 'Crear cuenta y suscribirme' : 'Crear cuenta') : 'Iniciar sesión')}
           </button>
         </form>
+        {mode === 'signup' && (
+          <p className="text-xs text-sea-500 text-center mt-4 leading-relaxed px-2">
+            Estado del Mar es un espacio de psicoeducación y autoconocimiento. No reemplaza la terapia ni la atención de un profesional de salud mental.
+          </p>
+        )}
         <button onClick={() => { setMode(mode === 'signup' ? 'login' : 'signup'); setError(''); }} className="btn-link w-full text-sea-600 text-sm mt-4 hover:text-sea-800 inline-block">
           {mode === 'signup' ? '¿Ya tenés cuenta? Iniciá sesión' : '¿No tenés cuenta? Registrate'}
         </button>
@@ -2056,6 +2065,10 @@ function TopicDetail({ topic, subscribed, onBack, onOpenSubscribe }) {
           {tab === 'video' && topic.video_url && <VideoPlayer src={topic.video_url} />}
           {tab === 'meditacion' && <MeditationPlayer meditation={topic.meditation} audioUrl={topic.audio_url} />}
           {tab === 'ejercicio' && <ExerciseChecklist exercise={topic.exercise} storageKey={topic.id} />}
+          {/* Nota orientativa al pie de todo el contenido */}
+          <p className="text-xs text-sea-400 text-center mt-10 max-w-xl mx-auto leading-relaxed">
+            El material de esta ventana es orientativo y de carácter psicoeducativo. No reemplaza la consulta con un profesional de salud mental. Si necesitás ayuda, no dudes en buscarla.
+          </p>
         </div>
       )}
     </div>
@@ -2687,6 +2700,68 @@ function AdminPanel({ topics, price, setPrice, onSavePrice, priceError, waNumber
   const [savingWa, setSavingWa] = React.useState(false);
   const [waSaved, setWaSaved] = React.useState(false);
   const [waError, setWaError] = React.useState('');
+  // Backup / Restore
+  const [restoring, setRestoring] = React.useState(false);
+  const [restoreMsg, setRestoreMsg] = React.useState('');
+  const restoreInputRef = React.useRef(null);
+
+  function descargarBackup() {
+    const hoy = new Date().toISOString().slice(0, 10);
+    const contenido = {
+      exportadoEl: new Date().toISOString(),
+      topics,
+      config: { price, whatsapp: waNumber, whatsapp_msg: waMsg },
+    };
+    const blob = new Blob([JSON.stringify(contenido, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'estado-del-mar-backup-' + hoy + '.json';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }
+
+  async function manejarRestaurar(e) {
+    const archivo = e.target.files && e.target.files[0];
+    if (restoreInputRef.current) restoreInputRef.current.value = '';
+    if (!archivo) return;
+    setRestoreMsg('');
+    let datos;
+    try {
+      const texto = await archivo.text();
+      datos = JSON.parse(texto);
+    } catch (_) {
+      setRestoreMsg('El archivo no es un JSON válido. Verificá que hayas elegido el archivo correcto.');
+      return;
+    }
+    if (!datos.topics || !Array.isArray(datos.topics) || datos.topics.length === 0) {
+      setRestoreMsg('El archivo no contiene ventanas válidas. No se realizaron cambios.');
+      return;
+    }
+    const cantidad = datos.topics.length;
+    const confirmar = window.confirm(
+      '¡ATENCIÓN!\n\nEstás a punto de reemplazar todas tus ventanas actuales con las ' + cantidad + ' ventanas del archivo de copia de seguridad.\n\nEsta acción sobreescribe el contenido actual. No se puede deshacer.\n\n¿Querés continuar?'
+    );
+    if (!confirmar) return;
+    setRestoring(true);
+    setRestoreMsg('Restaurando ventanas, por favor esperá…');
+    let errores = 0;
+    for (const t of datos.topics) {
+      try {
+        await onSaveTopic(t);
+      } catch (_) {
+        errores++;
+      }
+    }
+    setRestoring(false);
+    if (errores === 0) {
+      setRestoreMsg('Restauración completa. Se cargaron ' + cantidad + ' ventanas correctamente.');
+    } else {
+      setRestoreMsg('Restauración parcial: ' + errores + ' ventana(s) no se pudieron guardar. Revisá tu conexión e intentá de nuevo.');
+    }
+  }
 
   async function saveTopic(updated) {
     // M1: si es creación (no hay editingId), verificar que el slug no colisione con una ventana existente
@@ -2798,6 +2873,43 @@ function AdminPanel({ topics, price, setPrice, onSavePrice, priceError, waNumber
               {waSaved && <span role="status" aria-live="polite" className="text-sm text-green-600 font-semibold">WhatsApp guardado ✓</span>}
             </div>
             {waError && <p role="alert" className="text-sm text-red-600 mt-1">{waError}</p>}
+          </div>
+
+          {/* Bloque de copia de seguridad */}
+          <div className="mt-6 pt-6 border-t border-mist-100">
+            <p className="font-serif text-base text-sea-900 mb-1">Copia de seguridad</p>
+            <p className="text-sm text-sea-500 mb-4">Guardá una copia de todo tu contenido por las dudas, o restaurá desde una copia anterior.</p>
+            <button
+              onClick={descargarBackup}
+              className="btn btn-primary btn-sm"
+            >
+              Descargar copia de seguridad
+            </button>
+            <div className="mt-5 pt-5 border-t border-mist-50">
+              <p className="text-sm font-semibold text-sea-700 mb-1">Restaurar desde una copia</p>
+              <p className="text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded-xl px-3 py-2 mb-3">
+                Advertencia: restaurar reemplaza tus ventanas actuales por las del archivo. Esta acción no se puede deshacer. Hacé una descarga de copia de seguridad antes si no estás segura/o.
+              </p>
+              <input
+                ref={restoreInputRef}
+                type="file"
+                accept="application/json"
+                className="hidden"
+                onChange={manejarRestaurar}
+              />
+              <button
+                onClick={() => restoreInputRef.current && restoreInputRef.current.click()}
+                disabled={restoring}
+                className="btn btn-sm bg-amber-100 text-amber-800 hover:bg-amber-200 border border-amber-300 rounded-full px-4 py-2 font-semibold disabled:opacity-50"
+              >
+                {restoring ? 'Restaurando…' : 'Restaurar desde una copia'}
+              </button>
+              {restoreMsg && (
+                <p role="status" aria-live="polite" className={"text-sm mt-3 " + (restoreMsg.startsWith('Restauración completa') ? 'text-green-700' : 'text-amber-700')}>
+                  {restoreMsg}
+                </p>
+              )}
+            </div>
           </div>
 
           <div className="mt-6 pt-6 border-t border-mist-100">
