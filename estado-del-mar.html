@@ -1382,7 +1382,7 @@ function Header({ loggedIn, subscribed, onNav, onNavigateSection, onOpenPage, on
 
   const sectionItems = [
     { id: 'ventanas', label: 'Ventanas' },
-    { id: 'como-funciona', label: 'Cómo funciona' },
+    { id: 'como-funciona', label: 'Como funciona' },
     { id: 'precio', label: 'Precio' },
   ];
   const pageItems = [
@@ -1535,7 +1535,7 @@ function Hero({ onOpenSubscribe, topics: heroTopics }) {
         {/* B8: botones en vez de anchors nativos — evita hash en la URL y usa scroll suave consistente */}
         <div className="flex flex-col sm:flex-row gap-4 justify-center items-center animate-fadein">
           <button onClick={() => { const el = document.getElementById('ventanas'); if (el) el.scrollIntoView({ behavior: 'smooth' }); }} className="btn btn-coral btn-lg">Ver las ventanas</button>
-          <button onClick={() => { const el = document.getElementById('como-funciona'); if (el) el.scrollIntoView({ behavior: 'smooth' }); }} className="btn btn-ghost btn-lg">Cómo funciona</button>
+          <button onClick={() => { const el = document.getElementById('como-funciona'); if (el) el.scrollIntoView({ behavior: 'smooth' }); }} className="btn btn-ghost btn-lg">Como funciona</button>
         </div>
       </div>
       <div className="text-white relative z-10"><WaveDivider /></div>
@@ -1553,7 +1553,7 @@ function HowItWorks() {
     <section id="como-funciona" className="py-24 bg-white">
       <div className="max-w-5xl mx-auto px-6">
         <Reveal className="text-center max-w-2xl mx-auto mb-14">
-          <Overline>Cómo funciona</Overline>
+          <Overline>Como funciona</Overline>
           <h2 className="font-serif text-4xl md:text-5xl font-semibold text-sea-900">Tres pasos, a tu propio ritmo</h2>
         </Reveal>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
