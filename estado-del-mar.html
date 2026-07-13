@@ -2019,8 +2019,16 @@ function TopicDetail({ topic, subscribed, onBack, onOpenSubscribe }) {
 
   return (
     <div className="min-h-screen">
-      <div className={"bg-gradient-to-br " + (topic.gradient || DEFAULT_GRADIENT) + " text-white"}>
-        <div className="max-w-4xl mx-auto px-6 pt-10 pb-16">
+      <div className={"relative text-white bg-gradient-to-br " + (topic.gradient || DEFAULT_GRADIENT)}>
+        {topic.cover_url ? (
+          <React.Fragment>
+            <img src={topic.cover_url} alt={"Portada de " + topic.title} className="absolute inset-0 w-full h-full object-cover" onError={e => { e.currentTarget.style.display='none'; }} />
+            <div className={"absolute inset-0 bg-gradient-to-br " + (topic.gradient || DEFAULT_GRADIENT) + " opacity-70"}></div>
+          </React.Fragment>
+        ) : (
+          <div className={"absolute inset-0 bg-gradient-to-br " + (topic.gradient || DEFAULT_GRADIENT)}></div>
+        )}
+        <div className="relative max-w-4xl mx-auto px-6 pt-10 pb-16">
           <button onClick={onBack} className="text-white/80 hover:text-white text-sm font-semibold mb-8 inline-flex items-center gap-1 hover:-translate-x-1 transition-transform duration-200">← Volver a las ventanas</button>
           <div className="flex items-center gap-5">
             <div className="w-20 h-20 rounded-full bg-white/15 flex items-center justify-center text-4xl border-2 border-white/30 overflow-hidden leading-none">{topic.emoji}</div>
@@ -2064,12 +2072,13 @@ function TopicDetail({ topic, subscribed, onBack, onOpenSubscribe }) {
 
 /* ===== estado-del-mar.11-admin-panel.js ===== */
 
-// Sube un archivo al bucket "media" de Supabase Storage y devuelve la URL pública.
-async function uploadMedia(file, prefix) {
+// Sube un Blob arbitrario al bucket "media" de Supabase Storage y devuelve la URL pública.
+async function uploadBlob(blob, prefix, ext) {
   try {
-    const ext = (file.name.split('.').pop() || 'bin').toLowerCase();
-    const path = (prefix || 'archivo') + '/' + Date.now() + '-' + Math.random().toString(36).slice(2, 8) + '.' + ext;
-    const { error } = await sb.storage.from('media').upload(path, file, { cacheControl: '3600', upsert: false });
+    const safeExt = (ext || 'bin').toLowerCase();
+    const path = (prefix || 'archivo') + '/' + Date.now() + '-' + Math.random().toString(36).slice(2, 8) + '.' + safeExt;
+    const contentType = blob.type || 'application/octet-stream';
+    const { error } = await sb.storage.from('media').upload(path, blob, { cacheControl: '3600', upsert: false, contentType });
     if (error) return { error: error.message };
     const { data } = sb.storage.from('media').getPublicUrl(path);
     return { url: data.publicUrl };
@@ -2078,11 +2087,112 @@ async function uploadMedia(file, prefix) {
   }
 }
 
-// Campo reutilizable para subir un archivo (video o audio) desde el navegador.
+// Sube un archivo al bucket "media" de Supabase Storage y devuelve la URL pública.
+async function uploadMedia(file, prefix) {
+  const ext = (file.name.split('.').pop() || 'bin').toLowerCase();
+  return uploadBlob(file, prefix, ext);
+}
+
+// ── Cache de ffmpeg a nivel módulo (se carga una sola vez por sesión, de forma perezosa) ──
+let _ffmpegPromise = null;
+async function getFFmpeg() {
+  if (_ffmpegPromise) return _ffmpegPromise;
+  _ffmpegPromise = (async () => {
+    const { FFmpeg } = await import('https://esm.sh/@ffmpeg/ffmpeg@0.12.10');
+    const { toBlobURL } = await import('https://esm.sh/@ffmpeg/util@0.12.1');
+    const base = 'https://esm.sh/@ffmpeg/core@0.12.6/dist/esm';
+    const ffmpeg = new FFmpeg();
+    const coreURL = await toBlobURL(base + '/ffmpeg-core.js', 'text/javascript');
+    const wasmURL = await toBlobURL(base + '/ffmpeg-core.wasm', 'application/wasm');
+    await ffmpeg.load({ coreURL, wasmURL });
+    return ffmpeg;
+  })();
+  return _ffmpegPromise.catch(e => { _ffmpegPromise = null; throw e; });
+}
+
+// Comprime un video en el navegador usando ffmpeg.wasm (single-thread).
+// onPhase: función que recibe 'prep'|'compress'|'upload'; onProgress: 0-99.
+async function comprimirVideo(file, onPhase, onProgress) {
+  onPhase('prep');
+  const ffmpeg = await getFFmpeg();
+  const onProg = ({ progress }) => onProgress(Math.min(99, Math.round(progress * 100)));
+  ffmpeg.on('progress', onProg);
+  try {
+    onPhase('compress');
+    const buf = new Uint8Array(await file.arrayBuffer());
+    await ffmpeg.writeFile('in.mp4', buf);
+    await ffmpeg.exec([
+      '-i', 'in.mp4',
+      '-vf', "scale='min(1280,iw)':'-2'",
+      '-c:v', 'libx264', '-crf', '28', '-preset', 'veryfast',
+      '-c:a', 'aac', '-b:a', '128k',
+      '-movflags', '+faststart',
+      'out.mp4'
+    ]);
+    const data = await ffmpeg.readFile('out.mp4');
+    try { await ffmpeg.deleteFile('in.mp4'); await ffmpeg.deleteFile('out.mp4'); } catch(e) {}
+    return new Blob([data.buffer], { type: 'video/mp4' });
+  } finally {
+    ffmpeg.off('progress', onProg);
+  }
+}
+
+// Comprime una imagen en el navegador: redimensiona si supera maxDim y exporta WebP (fallback JPEG).
+// Devuelve { blob, ext } o { error }.
+async function comprimirImagen(file, maxDim) {
+  maxDim = maxDim || 1400;
+  return new Promise(function(resolve) {
+    let objectUrl = null;
+    try {
+      objectUrl = URL.createObjectURL(file);
+      const img = new Image();
+      img.onload = function() {
+        try {
+          let w = img.naturalWidth, h = img.naturalHeight;
+          if (w > maxDim || h > maxDim) {
+            if (w >= h) { h = Math.round(h * maxDim / w); w = maxDim; }
+            else { w = Math.round(w * maxDim / h); h = maxDim; }
+          }
+          const canvas = document.createElement('canvas');
+          canvas.width = w; canvas.height = h;
+          const ctx = canvas.getContext('2d');
+          ctx.drawImage(img, 0, 0, w, h);
+          canvas.toBlob(function(blob) {
+            if (objectUrl) URL.revokeObjectURL(objectUrl);
+            if (blob) { resolve({ blob, ext: 'webp' }); return; }
+            // Fallback a JPEG si WebP no está disponible
+            canvas.toBlob(function(blobJpeg) {
+              if (blobJpeg) { resolve({ blob: blobJpeg, ext: 'jpg' }); }
+              else { resolve({ error: 'No se pudo generar la imagen comprimida.' }); }
+            }, 'image/jpeg', 0.85);
+          }, 'image/webp', 0.8);
+        } catch(e) {
+          if (objectUrl) URL.revokeObjectURL(objectUrl);
+          resolve({ error: String(e) });
+        }
+      };
+      img.onerror = function() {
+        if (objectUrl) URL.revokeObjectURL(objectUrl);
+        resolve({ error: 'No se pudo leer la imagen.' });
+      };
+      img.src = objectUrl;
+    } catch(e) {
+      if (objectUrl) URL.revokeObjectURL(objectUrl);
+      resolve({ error: String(e) });
+    }
+  });
+}
+
+// Campo reutilizable para subir un archivo (video, audio o imagen) desde el navegador.
 function MediaUploader({ label, accept, prefix, value, onChange, hint, kind }) {
+  // Hooks al tope — regla React
   const [uploading, setUploading] = React.useState(false);
   const [err, setErr] = React.useState('');
   const [mediaError, setMediaError] = React.useState(false);
+  // Estados de progreso para video con compresión
+  const [phase, setPhase] = React.useState('idle'); // 'idle'|'prep'|'compress'|'upload'
+  const [progress, setProgress] = React.useState(0);
+  const [sizeInfo, setSizeInfo] = React.useState(null); // { from, to } en bytes
   const inputRef = React.useRef(null);
 
   // Resetear el error de media si cambia la URL
@@ -2091,21 +2201,91 @@ function MediaUploader({ label, accept, prefix, value, onChange, hint, kind }) {
   async function handleFile(e) {
     const file = e.target.files && e.target.files[0];
     if (!file) return;
-    // A5: validar tamaño (máx 45 MB)
+
+    // ── Rama VIDEO: compresión con ffmpeg.wasm ───────────────────────────────
+    if (kind === 'video') {
+      if (!file.type.startsWith('video/')) {
+        setErr('El archivo no es un video válido. Usá un archivo mp4 u otro formato de video.');
+        if (inputRef.current) inputRef.current.value = '';
+        return;
+      }
+      setErr(''); setUploading(true); setSizeInfo(null); setProgress(0);
+      let blobToUpload = file, ext = (file.name.split('.').pop() || 'mp4').toLowerCase(), aviso = '';
+      try {
+        const comprimido = await comprimirVideo(file, setPhase, setProgress);
+        if (comprimido && comprimido.size > 0 && comprimido.size < file.size) {
+          blobToUpload = comprimido; ext = 'mp4';
+          setSizeInfo({ from: file.size, to: comprimido.size });
+        }
+      } catch (e) {
+        aviso = 'No se pudo comprimir en este navegador; se subió el video original.';
+      }
+      if (blobToUpload.size > 45 * 1024 * 1024) {
+        setErr('El video, aún comprimido, supera 45 MB. Probá con uno más corto.');
+        setUploading(false); setPhase('idle');
+        if (inputRef.current) inputRef.current.value = '';
+        return;
+      }
+      setPhase('upload');
+      const res = await uploadBlob(blobToUpload, prefix, ext);
+      setUploading(false); setPhase('idle');
+      if (res.error) { setErr('No se pudo subir: ' + res.error); return; }
+      if (aviso) setErr(aviso);
+      onChange(res.url);
+      if (inputRef.current) inputRef.current.value = '';
+      return;
+    }
+
+    // ── Rama IMAGEN: optimización con canvas ─────────────────────────────────
+    if (kind === 'image') {
+      if (!file.type.startsWith('image/')) {
+        setErr('El archivo no es una imagen válida.');
+        if (inputRef.current) inputRef.current.value = '';
+        return;
+      }
+      const MAX_IMG = 20 * 1024 * 1024;
+      if (file.size > MAX_IMG) {
+        setErr('La imagen supera 20 MB. Usá una más liviana.');
+        if (inputRef.current) inputRef.current.value = '';
+        return;
+      }
+      setErr(''); setUploading(true);
+      setPhase('compress');
+      let blobFinal = null, extFinal = 'webp';
+      const res2 = await comprimirImagen(file);
+      if (res2.error || !res2.blob) {
+        // Fallback: subir el original si entra en el límite
+        if (file.size > MAX_IMG) {
+          setErr('No se pudo optimizar la imagen y el original supera 20 MB.');
+          setUploading(false); setPhase('idle');
+          if (inputRef.current) inputRef.current.value = '';
+          return;
+        }
+        blobFinal = file;
+        extFinal = (file.name.split('.').pop() || 'jpg').toLowerCase();
+      } else {
+        blobFinal = res2.blob;
+        extFinal = res2.ext;
+      }
+      setPhase('upload');
+      const resImg = await uploadBlob(blobFinal, prefix, extFinal);
+      setUploading(false); setPhase('idle');
+      if (resImg.error) { setErr('No se pudo subir: ' + resImg.error); return; }
+      setSizeInfo({ to: blobFinal.size });
+      onChange(resImg.url);
+      if (inputRef.current) inputRef.current.value = '';
+      return;
+    }
+
+    // ── Rama AUDIO (sin cambios respecto al original) ────────────────────────
+    if (kind === 'audio' && !file.type.startsWith('audio/')) {
+      setErr('El archivo no es un audio válido. Usá un archivo mp3 u otro formato de audio.');
+      if (inputRef.current) inputRef.current.value = '';
+      return;
+    }
     const MAX_BYTES = 45 * 1024 * 1024;
     if (file.size > MAX_BYTES) {
       setErr('El archivo supera 45 MB. Subí uno más liviano.');
-      if (inputRef.current) inputRef.current.value = '';
-      return;
-    }
-    // A5: validar tipo según el kind esperado (video o audio)
-    if (kind === 'video' && !file.type.startsWith('video/')) {
-      setErr('El archivo no es un video válido. Usá un archivo mp4 u otro formato de video.');
-      if (inputRef.current) inputRef.current.value = '';
-      return;
-    }
-    if (kind === 'audio' && !file.type.startsWith('audio/')) {
-      setErr('El archivo no es un audio válido. Usá un archivo mp3 u otro formato de audio.');
       if (inputRef.current) inputRef.current.value = '';
       return;
     }
@@ -2117,6 +2297,19 @@ function MediaUploader({ label, accept, prefix, value, onChange, hint, kind }) {
     if (inputRef.current) inputRef.current.value = '';
   }
 
+  // Helper para formatear bytes a MB con 1 decimal
+  function fmtMB(bytes) { return (bytes / 1024 / 1024).toFixed(1) + ' MB'; }
+  // Helper para formatear bytes a KB
+  function fmtKB(bytes) { return Math.round(bytes / 1024) + ' KB'; }
+
+  // Mensaje de progreso para video
+  function videoProgressMsg() {
+    if (phase === 'prep') return 'Preparando el compresor… (una vez, puede tardar)';
+    if (phase === 'compress') return 'Comprimiendo video… ' + progress + '%';
+    if (phase === 'upload') return 'Subiendo video…';
+    return 'Procesando…';
+  }
+
   return (
     <div>
       <label className="text-sm font-semibold text-sea-700 block mb-1">{label}</label>
@@ -2126,16 +2319,39 @@ function MediaUploader({ label, accept, prefix, value, onChange, hint, kind }) {
             <p className="text-sm text-red-600 py-2">No se pudo cargar el archivo. Verificá que se haya subido bien.</p>
           ) : kind === 'video'
             ? <video src={value} controls className="w-full rounded-lg max-h-52 bg-black" onError={() => setMediaError(true)}></video>
+            : kind === 'image'
+            ? <img src={value} alt="Portada" className="w-full rounded-lg max-h-52 object-cover" onError={e => { e.currentTarget.style.display='none'; setMediaError(true); }} />
             : <audio src={value} controls className="w-full" onError={() => setMediaError(true)}></audio>}
           <div className="flex items-center gap-3 mt-2">
             <span className="text-xs text-mist-700 font-semibold">{mediaError ? 'Error al cargar' : 'Archivo cargado ✓'}</span>
-            <button onClick={() => { onChange(''); setMediaError(false); }} className="btn-link text-xs text-red-500 hover:text-red-700">Quitar</button>
+            {sizeInfo && kind === 'image' && <span className="text-xs text-sea-500">Imagen optimizada ✓ ({fmtKB(sizeInfo.to)})</span>}
+            <button onClick={() => { onChange(''); setMediaError(false); setSizeInfo(null); }} className="btn-link text-xs text-red-500 hover:text-red-700">Quitar</button>
           </div>
         </div>
       ) : null}
-      <input ref={inputRef} type="file" accept={accept} onChange={handleFile}
-        className="block w-full text-sm text-sea-600 file:mr-3 file:py-2 file:px-4 file:rounded-full file:border-0 file:bg-mist-100 file:text-mist-700 file:font-semibold hover:file:bg-mist-200 file:cursor-pointer cursor-pointer" />
-      {uploading && <p className="text-sm text-mist-600 mt-1 animate-fadein">Subiendo archivo… no cierres esta ventana.</p>}
+      {sizeInfo && sizeInfo.from && !value && (
+        <p className="text-xs text-sea-500 mb-1">Video comprimido ✓ (de {fmtMB(sizeInfo.from)} a {fmtMB(sizeInfo.to)})</p>
+      )}
+      <input ref={inputRef} type="file" accept={accept} onChange={handleFile} disabled={uploading}
+        className="block w-full text-sm text-sea-600 file:mr-3 file:py-2 file:px-4 file:rounded-full file:border-0 file:bg-mist-100 file:text-mist-700 file:font-semibold hover:file:bg-mist-200 file:cursor-pointer cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed" />
+      {uploading && kind === 'video' && (
+        <div className="mt-2 animate-fadein">
+          <p className="text-sm text-mist-600">{videoProgressMsg()}</p>
+          {phase === 'compress' && (
+            <div className="mt-1 w-full bg-mist-100 rounded-full h-2">
+              <div className="bg-sea-500 h-2 rounded-full transition-all duration-300" style={{ width: progress + '%' }}></div>
+            </div>
+          )}
+        </div>
+      )}
+      {uploading && kind === 'image' && (
+        <p className="text-sm text-mist-600 mt-1 animate-fadein">
+          {phase === 'compress' ? 'Optimizando imagen…' : 'Subiendo imagen…'}
+        </p>
+      )}
+      {uploading && kind === 'audio' && (
+        <p className="text-sm text-mist-600 mt-1 animate-fadein">Subiendo archivo… no cierres esta ventana.</p>
+      )}
       {err && <p className="text-sm text-red-600 mt-1">{err}</p>}
       {hint && <p className="text-xs text-sea-500 mt-1">{hint}</p>}
     </div>
@@ -2221,6 +2437,7 @@ function TopicEditForm({ topic, onSave, onCancel }) {
   // Media
   const [videoUrl, setVideoUrl] = React.useState((topic && topic.video_url) || '');
   const [audioUrl, setAudioUrl] = React.useState((topic && topic.audio_url) || '');
+  const [coverUrl, setCoverUrl] = React.useState((topic && topic.cover_url) || '');
 
   // Preguntas — array de objetos { text }
   const [questions, setQuestions] = React.useState(() =>
@@ -2253,6 +2470,7 @@ function TopicEditForm({ topic, onSave, onCancel }) {
     ),
     videoUrl: (topic && topic.video_url) || '',
     audioUrl: (topic && topic.audio_url) || '',
+    coverUrl: (topic && topic.cover_url) || '',
     questions: JSON.stringify(
       (topic && Array.isArray(topic.questions) && topic.questions.length)
         ? topic.questions.map(q => ({ text: q.text || '' }))
@@ -2325,7 +2543,7 @@ function TopicEditForm({ topic, onSave, onCancel }) {
       medTitle !== init.medTitle || medDuration !== init.medDuration || medDescription !== init.medDescription ||
       exerciseTitle !== init.exerciseTitle ||
       JSON.stringify(steps) !== init.steps ||
-      videoUrl !== init.videoUrl || audioUrl !== init.audioUrl ||
+      videoUrl !== init.videoUrl || audioUrl !== init.audioUrl || coverUrl !== init.coverUrl ||
       JSON.stringify(questions) !== init.questions ||
       JSON.stringify(levels) !== init.levels;
   }
@@ -2400,6 +2618,7 @@ function TopicEditForm({ topic, onSave, onCancel }) {
       levels: levels,
       video_url: videoUrl || null,
       audio_url: audioUrl || null,
+      cover_url: coverUrl || null,
       sort_order: (base.sort_order != null ? base.sort_order : 0),
     };
     onSave(updated);
@@ -2456,7 +2675,16 @@ function TopicEditForm({ topic, onSave, onCancel }) {
 
       {/* Media */}
       <div className="border-t border-mist-100 pt-7 space-y-4">
-        <p className="text-xs font-bold uppercase tracking-widest text-mist-500 mb-1">Video y audio</p>
+        <p className="text-xs font-bold uppercase tracking-widest text-mist-500 mb-1">Video, audio e imagen</p>
+        <MediaUploader
+          label="Imagen de portada (opcional)"
+          accept="image/*"
+          prefix="portadas"
+          kind="image"
+          value={coverUrl}
+          onChange={setCoverUrl}
+          hint="Se optimiza automáticamente antes de subir. Si la dejás vacía, la ventana usa el color de fondo."
+        />
         <MediaUploader
           label="Video de la ventana"
           accept="video/*"
@@ -2464,7 +2692,7 @@ function TopicEditForm({ topic, onSave, onCancel }) {
           kind="video"
           value={videoUrl}
           onChange={setVideoUrl}
-          hint="Subí un archivo de video (mp4 recomendado). Ojo: el plan gratis de Supabase es limitado para video — ideal videos cortos o pocos. Para una videoteca grande conviene Bunny Stream."
+          hint="Subí un archivo de video (mp4 recomendado). Se comprime automáticamente en el navegador antes de subir. Ojo: el plan gratis de Supabase es limitado para video — ideal videos cortos o pocos. Para una videoteca grande conviene Bunny Stream."
         />
         <MediaUploader
           label="Audio de la meditación (opcional)"
