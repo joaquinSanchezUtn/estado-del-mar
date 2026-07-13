@@ -1866,39 +1866,76 @@ function ProfileDrawer({ email, profile, subscribed, subscribeDate, isAdmin, sub
         {/* Contenido */}
         <div className="px-5 py-5 space-y-4 drawer-stagger">
           {/* Suscripción */}
-          <div className="bg-white rounded-2xl border border-mist-100 p-5 shadow-sm">
-            <h3 className="font-serif text-lg text-sea-900 mb-3">Suscripción</h3>
-            {subscribed ? (
-              <div className="bg-mist-50 rounded-xl p-4 mb-4">
-                <p className="text-sea-900 font-semibold">Sos parte de Estado del Mar 🌊</p>
-                <p className="text-sm text-sea-500 mt-0.5">{subscribeDate ? 'Activa desde el ' + formatDate(subscribeDate) : 'Suscripción activa'}</p>
-              </div>
-            ) : (
-              <div className="bg-sand-100 rounded-xl p-4 mb-4">
-                <p className="text-sea-900 font-semibold">Sin suscripción activa</p>
-                <p className="text-sm text-sea-500 mt-0.5">Suscribite para abrir todas las ventanas.</p>
-              </div>
-            )}
-            {!subscribed && (
-              <button onClick={onSubscribe} disabled={subscribing} className="btn btn-coral btn-block disabled:opacity-50">
-                {subscribing ? 'Procesando…' : 'Suscribirme'}
-              </button>
-            )}
-            {subscribed && !confirming && (
-              <button onClick={() => setConfirming(true)} disabled={subscribing} className="btn btn-danger btn-sm disabled:opacity-50">Cancelar suscripción</button>
-            )}
-            {subscribed && confirming && (
-              <div className="space-y-3">
-                <p className="text-sm text-sea-600">¿Confirmás que querés cancelar? Vas a perder el acceso a las ventanas.</p>
-                <div className="flex flex-wrap gap-2">
-                  <button onClick={onCancelSubscription} disabled={subscribing} className="btn btn-danger-solid btn-sm disabled:opacity-50">
-                    {subscribing ? 'Procesando…' : 'Sí, cancelar'}
+          {(() => {
+            // Determinar el estado de suscripción para mostrar el panel correcto
+            const profSub = profile && profile.subscribed;
+            const profUntil = profile && profile.subscription_until;
+            const profAutoRenew = profile && profile.auto_renew;
+            // Acceso vigente: subscribed true y (sin fecha de vencimiento —legacy— o fecha futura)
+            const accesoVigente = profSub && (!profUntil || new Date(profUntil) > new Date());
+            // "Cancelada pero con acceso": acceso vigente y auto_renew explícitamente false
+            const canceladaConAcceso = accesoVigente && profAutoRenew === false;
+            // "Activa y se renueva": acceso vigente y auto_renew null o true
+            const activaRenova = accesoVigente && profAutoRenew !== false;
+            return (
+              <div className="bg-white rounded-2xl border border-mist-100 p-5 shadow-sm">
+                <h3 className="font-serif text-lg text-sea-900 mb-3">Suscripción</h3>
+
+                {/* Caso 1: activa y se renueva (o legacy sin fecha) */}
+                {activaRenova && (
+                  <div className="bg-mist-50 rounded-xl p-4 mb-4">
+                    <p className="text-sea-900 font-semibold">Sos parte de Estado del Mar 🌊</p>
+                    {profUntil
+                      ? <p className="text-sm text-sea-500 mt-0.5">Se renueva el {formatDate(profUntil)}</p>
+                      : <p className="text-sm text-sea-500 mt-0.5">{subscribeDate ? 'Activa desde el ' + formatDate(subscribeDate) : 'Suscripción activa'}</p>
+                    }
+                  </div>
+                )}
+                {activaRenova && !confirming && (
+                  <button onClick={() => setConfirming(true)} disabled={subscribing} className="btn btn-danger btn-sm disabled:opacity-50">Cancelar suscripción</button>
+                )}
+                {activaRenova && confirming && (
+                  <div className="space-y-3">
+                    <p className="text-sm text-sea-600">
+                      ¿Confirmás que querés cancelar la renovación?{profUntil ? ' Vas a seguir teniendo acceso hasta el ' + formatDate(profUntil) + ', y después no se renueva.' : ' Después del vencimiento no se renueva.'}
+                    </p>
+                    <div className="flex flex-wrap gap-2">
+                      <button onClick={() => { onCancelSubscription(); setConfirming(false); }} disabled={subscribing} className="btn btn-danger-solid btn-sm disabled:opacity-50">
+                        {subscribing ? 'Procesando…' : 'Sí, cancelar renovación'}
+                      </button>
+                      <button onClick={() => setConfirming(false)} disabled={subscribing} className="btn btn-ghost btn-sm disabled:opacity-50">Volver</button>
+                    </div>
+                  </div>
+                )}
+
+                {/* Caso 2: cancelada pero aún con acceso hasta la fecha */}
+                {canceladaConAcceso && (
+                  <div className="bg-sand-100 rounded-xl p-4 mb-4">
+                    <p className="text-sea-900 font-semibold">Renovación cancelada</p>
+                    <p className="text-sm text-sea-600 mt-1">Vas a conservar el acceso hasta el <strong>{formatDate(profUntil)}</strong>. Después de esa fecha, para volver a entrar vas a tener que suscribirte de nuevo.</p>
+                  </div>
+                )}
+                {canceladaConAcceso && (
+                  <button onClick={onSubscribe} disabled={subscribing} className="btn btn-coral btn-sm disabled:opacity-50">
+                    {subscribing ? 'Procesando…' : 'Reactivar renovación'}
                   </button>
-                  <button onClick={() => setConfirming(false)} disabled={subscribing} className="btn btn-ghost btn-sm disabled:opacity-50">Volver</button>
-                </div>
+                )}
+
+                {/* Caso 3: sin suscripción o vencida */}
+                {!activaRenova && !canceladaConAcceso && (
+                  <div className="bg-sand-100 rounded-xl p-4 mb-4">
+                    <p className="text-sea-900 font-semibold">Sin suscripción activa</p>
+                    <p className="text-sm text-sea-500 mt-0.5">Suscribite para abrir todas las ventanas.</p>
+                  </div>
+                )}
+                {!activaRenova && !canceladaConAcceso && (
+                  <button onClick={onSubscribe} disabled={subscribing} className="btn btn-coral btn-block disabled:opacity-50">
+                    {subscribing ? 'Procesando…' : 'Suscribirme'}
+                  </button>
+                )}
               </div>
-            )}
-          </div>
+            );
+          })()}
 
           {/* Datos personales — M9: form para que Enter guarde */}
           <div className="bg-white rounded-2xl border border-mist-100 p-5 shadow-sm">
@@ -3211,10 +3248,13 @@ function App() {
   }
 
   async function markSubscribedForUser(userId) {
-    const { error } = await sb.from('profiles').upsert({ id: userId, subscribed: true, subscribed_at: new Date().toISOString() });
+    const now = new Date();
+    const until = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000).toISOString();
+    const nowIso = now.toISOString();
+    const { error } = await sb.from('profiles').upsert({ id: userId, subscribed: true, subscribed_at: nowIso, subscription_until: until, auto_renew: true });
     // S2: mostrar error en español al usuario, no solo en consola
     if (error) { console.error('Error al suscribir:', error.message); alert(traducirError(error.message)); return; }
-    setProfile(p => ({ ...(p || { id: userId }), subscribed: true, subscribed_at: new Date().toISOString() }));
+    setProfile(p => ({ ...(p || { id: userId }), subscribed: true, subscribed_at: nowIso, subscription_until: until, auto_renew: true }));
   }
 
   async function markSubscribed() {
@@ -3232,10 +3272,12 @@ function App() {
     if (!session || !session.user) return;
     setSubscribing(true);
     try {
-      const { error } = await sb.from('profiles').upsert({ id: session.user.id, subscribed: false });
+      // Cancelar la renovación: mantiene subscribed:true y subscription_until intactos,
+      // solo marca auto_renew:false para que no se renueve al vencer el período pago.
+      const { error } = await sb.from('profiles').upsert({ id: session.user.id, auto_renew: false });
       // S2: mostrar error en español al usuario, no solo en consola
       if (error) { console.error('Error al cancelar suscripción:', error.message); alert(traducirError(error.message)); return; }
-      setProfile(p => ({ ...(p || {}), subscribed: false }));
+      setProfile(p => ({ ...(p || {}), auto_renew: false }));
     } finally {
       setSubscribing(false);
     }
@@ -3399,7 +3441,8 @@ function App() {
   }
 
   const loggedIn = !!(session && session.user);
-  const subscribed = !!(profile && profile.subscribed);
+  // Acceso activo: subscribed true Y (sin fecha de vencimiento —legacy— O fecha futura)
+  const subscribed = !!(profile && profile.subscribed && (!profile.subscription_until || new Date(profile.subscription_until) > new Date()));
   const isAdmin = !!(profile && profile.is_admin);
 
   if (view === 'admin') {

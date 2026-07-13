@@ -181,6 +181,13 @@ create policy "insertar_mi_perfil"
 alter table public.app_config add column if not exists whatsapp text;
 alter table public.app_config add column if not exists whatsapp_msg text;
 
+-- 13) Modelo de suscripción mensual con acceso hasta vencimiento
+--     subscription_until: hasta qué fecha y hora tiene acceso el usuario (null = sin vencimiento, acceso permanente para suscriptores legacy).
+--     auto_renew: si la suscripción se renueva automáticamente al vencer. Cuando se integren pagos reales, la pasarela de pago maneja este flag.
+--     null en auto_renew se trata como true (suscriptores previos al cambio siguen activos con normalidad).
+alter table public.profiles add column if not exists subscription_until timestamp with time zone;
+alter table public.profiles add column if not exists auto_renew boolean default false;
+
 -- ============================================================
 -- PASO MANUAL (hacer DESPUÉS de registrarte una vez en el sitio):
 -- reemplazá el email por el que usaste para registrarte, y ejecutá
