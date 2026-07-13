@@ -115,9 +115,6 @@ alter table public.topics add column if not exists video_url text;
 alter table public.topics add column if not exists audio_url text;
 alter table public.topics add column if not exists sort_order integer default 0;
 
--- Portada opcional de cada ventana (imagen comprimida en el navegador antes de subir).
-alter table public.topics add column if not exists cover_url text;
-
 -- 9) Almacenamiento de archivos (videos y audios que suben los administradores)
 --    Bucket público "media": cualquiera puede VER los archivos (para reproducir),
 --    pero solo un administrador puede SUBIR / cambiar / borrar.
