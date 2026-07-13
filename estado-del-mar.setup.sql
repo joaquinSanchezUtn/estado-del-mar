@@ -182,10 +182,13 @@ create policy "config_solo_admin_inserta"
   with check (exists (select 1 from public.profiles where id = auth.uid() and is_admin = true));
 
 -- 11) Permitir que cada usuario cree/actualice su propio perfil (para el upsert de suscripción/datos)
+-- V6 (defensa en profundidad): además de ser el dueño, el INSERT no puede setear is_admin=true.
+-- Así, en el borde improbable de que la fila del perfil no exista, un usuario no puede crearse admin.
+-- (subscribed se deja libre a propósito: la suscripción demo puede activarse por el propio usuario.)
 drop policy if exists "insertar_mi_perfil" on public.profiles;
 create policy "insertar_mi_perfil"
   on public.profiles for insert
-  with check (auth.uid() = id);
+  with check (auth.uid() = id and coalesce(is_admin, false) = false);
 
 -- 12) Configuración de WhatsApp editable desde el panel de administración (B10)
 alter table public.app_config add column if not exists whatsapp text;
