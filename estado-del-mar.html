@@ -2093,19 +2093,45 @@ async function uploadMedia(file, prefix) {
   return uploadBlob(file, prefix, ext);
 }
 
-// ── Cache de ffmpeg a nivel módulo (se carga una sola vez por sesión, de forma perezosa) ──
+// ── Carga de ffmpeg.wasm (single-thread) perezosa y cacheada por sesión ──
+// Importante: usamos las builds UMD servidas CRUDAS por unpkg. esm.sh transforma el
+// core en un módulo ESM y NO sirve como coreURL. Single-thread → NO requiere COOP/COEP.
+function cargarScript(src) {
+  return new Promise((resolve, reject) => {
+    const s = document.createElement('script');
+    s.src = src;
+    s.onload = () => resolve();
+    s.onerror = () => reject(new Error('No se pudo cargar ' + src));
+    document.head.appendChild(s);
+  });
+}
 let _ffmpegPromise = null;
 async function getFFmpeg() {
   if (_ffmpegPromise) return _ffmpegPromise;
   _ffmpegPromise = (async () => {
-    const { FFmpeg } = await import('https://esm.sh/@ffmpeg/ffmpeg@0.12.10');
-    const { toBlobURL } = await import('https://esm.sh/@ffmpeg/util@0.12.1');
-    const base = 'https://esm.sh/@ffmpeg/core@0.12.6/dist/esm';
-    const ffmpeg = new FFmpeg();
+    if (!(window.FFmpegWASM && window.FFmpegWASM.FFmpeg)) {
+      await cargarScript('https://unpkg.com/@ffmpeg/ffmpeg@0.12.10/dist/umd/ffmpeg.js');
+    }
+    if (!(window.FFmpegUtil && window.FFmpegUtil.toBlobURL)) {
+      await cargarScript('https://unpkg.com/@ffmpeg/util@0.12.1/dist/umd/index.js');
+    }
+    const { FFmpeg } = window.FFmpegWASM;
+    const { toBlobURL } = window.FFmpegUtil;
+    const base = 'https://unpkg.com/@ffmpeg/core@0.12.6/dist/umd';
     const coreURL = await toBlobURL(base + '/ffmpeg-core.js', 'text/javascript');
     const wasmURL = await toBlobURL(base + '/ffmpeg-core.wasm', 'application/wasm');
-    await ffmpeg.load({ coreURL, wasmURL });
-    return ffmpeg;
+    // Ruta feliz: el UMD 0.12.x trae el worker inline. Si algún navegador lo requiere,
+    // reintentamos una vez pasando el worker explícito.
+    const ffmpeg = new FFmpeg();
+    try {
+      await ffmpeg.load({ coreURL, wasmURL });
+      return ffmpeg;
+    } catch (e) {
+      const ffmpeg2 = new FFmpeg();
+      const classWorkerURL = await toBlobURL('https://unpkg.com/@ffmpeg/ffmpeg@0.12.10/dist/umd/814.ffmpeg.js', 'text/javascript');
+      await ffmpeg2.load({ coreURL, wasmURL, classWorkerURL });
+      return ffmpeg2;
+    }
   })();
   return _ffmpegPromise.catch(e => { _ffmpegPromise = null; throw e; });
 }
@@ -2123,17 +2149,19 @@ async function comprimirVideo(file, onPhase, onProgress) {
     await ffmpeg.writeFile('in.mp4', buf);
     await ffmpeg.exec([
       '-i', 'in.mp4',
-      '-vf', "scale='min(1280,iw)':'-2'",
+      '-vf', "scale='trunc(min(1280,iw)/2)*2':-2",
       '-c:v', 'libx264', '-crf', '28', '-preset', 'veryfast',
       '-c:a', 'aac', '-b:a', '128k',
       '-movflags', '+faststart',
       'out.mp4'
     ]);
     const data = await ffmpeg.readFile('out.mp4');
-    try { await ffmpeg.deleteFile('in.mp4'); await ffmpeg.deleteFile('out.mp4'); } catch(e) {}
     return new Blob([data.buffer], { type: 'video/mp4' });
   } finally {
     ffmpeg.off('progress', onProg);
+    // Liberar SIEMPRE el FS virtual (aunque exec haya fallado) para no acumular memoria entre videos.
+    try { await ffmpeg.deleteFile('in.mp4'); } catch(e) {}
+    try { await ffmpeg.deleteFile('out.mp4'); } catch(e) {}
   }
 }
 
@@ -2156,6 +2184,8 @@ async function comprimirImagen(file, maxDim) {
           const canvas = document.createElement('canvas');
           canvas.width = w; canvas.height = h;
           const ctx = canvas.getContext('2d');
+          // Fondo blanco: si cae al fallback JPEG (sin alpha), las zonas transparentes quedan blancas y no negras.
+          ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, w, h);
           ctx.drawImage(img, 0, 0, w, h);
           canvas.toBlob(function(blob) {
             if (objectUrl) URL.revokeObjectURL(objectUrl);
@@ -2325,13 +2355,11 @@ function MediaUploader({ label, accept, prefix, value, onChange, hint, kind }) {
           <div className="flex items-center gap-3 mt-2">
             <span className="text-xs text-mist-700 font-semibold">{mediaError ? 'Error al cargar' : 'Archivo cargado ✓'}</span>
             {sizeInfo && kind === 'image' && <span className="text-xs text-sea-500">Imagen optimizada ✓ ({fmtKB(sizeInfo.to)})</span>}
+            {sizeInfo && sizeInfo.from && kind === 'video' && <span className="text-xs text-sea-500">Comprimido ✓ (de {fmtMB(sizeInfo.from)} a {fmtMB(sizeInfo.to)})</span>}
             <button onClick={() => { onChange(''); setMediaError(false); setSizeInfo(null); }} className="btn-link text-xs text-red-500 hover:text-red-700">Quitar</button>
           </div>
         </div>
       ) : null}
-      {sizeInfo && sizeInfo.from && !value && (
-        <p className="text-xs text-sea-500 mb-1">Video comprimido ✓ (de {fmtMB(sizeInfo.from)} a {fmtMB(sizeInfo.to)})</p>
-      )}
       <input ref={inputRef} type="file" accept={accept} onChange={handleFile} disabled={uploading}
         className="block w-full text-sm text-sea-600 file:mr-3 file:py-2 file:px-4 file:rounded-full file:border-0 file:bg-mist-100 file:text-mist-700 file:font-semibold hover:file:bg-mist-200 file:cursor-pointer cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed" />
       {uploading && kind === 'video' && (
