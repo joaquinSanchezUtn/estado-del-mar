@@ -960,6 +960,14 @@ class ErrorBoundary extends React.Component {
   }
   render() {
     if (this.state.hasError) {
+      // Fallback compacto: ocupa el lugar de una tarjeta sin romper la grilla
+      if (this.props.compacto) {
+        return (
+          <div className="rounded-full aspect-square w-full max-w-[220px] mx-auto bg-mist-100 flex items-center justify-center text-center text-xs text-sea-500 px-4">
+            No se pudo mostrar esta ventana
+          </div>
+        );
+      }
       return (
         <div className="max-w-xl mx-auto py-12 text-center px-6">
           <p className="text-4xl mb-4">🌊</p>
@@ -1360,7 +1368,9 @@ function TopicsGrid({ topics, subscribed, onSelect }) {
       </Reveal>
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-x-6 gap-y-12">
         {topics.map(topic => (
-          <TopicCard key={topic.id} topic={topic} locked={!subscribed} onClick={() => onSelect(topic.id)} />
+          <ErrorBoundary key={topic.id} compacto>
+            <TopicCard topic={topic} locked={!subscribed} onClick={() => onSelect(topic.id)} />
+          </ErrorBoundary>
         ))}
       </div>
     </section>
@@ -2077,6 +2087,32 @@ function TopicDetail({ topic, subscribed, onBack, onOpenSubscribe }) {
 
 /* ===== estado-del-mar.11-admin-panel.js ===== */
 
+// Valida que una ventana (topic) tenga la estructura mínima esperada antes de restaurarla.
+// Devuelve true solo si la forma es válida; fail-closed ante cualquier anomalía.
+function validarTopic(t) {
+  if (!t || typeof t !== 'object' || Array.isArray(t)) return false;
+  if (typeof t.id !== 'string' || t.id.trim() === '') return false;
+  if ('title' in t && typeof t.title !== 'string') return false;
+  // Arrays opcionales: si están presentes deben ser arrays
+  for (const campo of ['questions', 'levels', 'slides']) {
+    if (campo in t && !Array.isArray(t[campo])) return false;
+  }
+  // Objetos opcionales: si están presentes deben ser objetos no-array no-null
+  for (const campo of ['meditation', 'exercise']) {
+    if (campo in t) {
+      const v = t[campo];
+      if (!v || typeof v !== 'object' || Array.isArray(v)) return false;
+    }
+  }
+  // exercise.steps debe ser array si exercise existe
+  if (t.exercise && 'steps' in t.exercise && !Array.isArray(t.exercise.steps)) return false;
+  // Campos de texto opcionales: string o null/ausente
+  for (const campo of ['video_url', 'audio_url', 'emoji', 'gradient', 'description']) {
+    if (campo in t && t[campo] !== null && typeof t[campo] !== 'string') return false;
+  }
+  return true;
+}
+
 // Sube un archivo al bucket "media" de Supabase Storage y devuelve la URL pública.
 async function uploadMedia(file, prefix) {
   try {
@@ -2738,6 +2774,13 @@ function AdminPanel({ topics, price, setPrice, onSavePrice, priceError, waNumber
     }
     if (!datos.topics || !Array.isArray(datos.topics) || datos.topics.length === 0) {
       setRestoreMsg('El archivo no contiene ventanas válidas. No se realizaron cambios.');
+      return;
+    }
+    // Validación fail-closed: si CUALQUIER ventana tiene formato inválido, abortamos todo
+    // para no persistir datos corruptos que puedan romper la home para todos los usuarios.
+    const todasValidas = datos.topics.every(validarTopic);
+    if (!todasValidas) {
+      setRestoreMsg('El archivo tiene ventanas con formato inválido. No se restauró nada para no dañar el contenido.');
       return;
     }
     const cantidad = datos.topics.length;

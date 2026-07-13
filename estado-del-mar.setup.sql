@@ -122,6 +122,16 @@ insert into storage.buckets (id, name, public)
 values ('media', 'media', true)
 on conflict (id) do nothing;
 
+-- Seguridad del bucket: limitar tipos de archivo permitidos y tamaño máximo (50 MB).
+-- Evita subir HTML/JS (que se servirían desde el dominio de Supabase) y agotar la cuota.
+update storage.buckets
+set allowed_mime_types = array[
+      'video/mp4','video/webm','video/ogg','video/quicktime',
+      'audio/mpeg','audio/mp3','audio/ogg','audio/wav','audio/aac','audio/mp4','audio/x-m4a'
+    ],
+    file_size_limit = 52428800
+where id = 'media';
+
 drop policy if exists "media_lectura_publica" on storage.objects;
 create policy "media_lectura_publica"
   on storage.objects for select
